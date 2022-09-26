@@ -16,7 +16,7 @@ to_py_converters: Dict = {
     eth_types.HexStr: lambda x: eth_utils.to_text(None, x),
     eth_types.BlockNumber: lambda x: eth_utils.to_int(None, x),
     eth_types.BlockIdentifier: lambda x: eth_utils.to_int(None, x),
-    eth_types.Data: lambda x: eth_utils.to_text(None, x),
+    eth_types.Data: lambda x: eth_utils.to_text(None, None, x),
     datetime: lambda x: datetime.fromtimestamp(eth_utils.to_int(None, x)),
     int: lambda x: eth_utils.to_int(None, x),
     str: lambda x: eth_utils.to_text(None, None, x),
