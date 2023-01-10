@@ -258,14 +258,13 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="module")
-async def async_rpc() -> AsyncGenerator:
+@pytest.fixture()
+def async_rpc():
     """Returns an AsyncEthereumJSONRPC instance."""
     # This fixture is reused for the entire module test run.
     # Temporary Infura ID
     # TODO(delete this infura project later)
-    jsonrpc = fasteth.AsyncEthereumJSONRPC()
-    yield jsonrpc
+    return fasteth.AsyncEthereumJSONRPC()
 
 
 @pytest.mark.asyncio
@@ -296,6 +295,7 @@ async def test_network_version(async_rpc: fasteth.AsyncEthereumJSONRPC):
     assert (
         network_version == eth_models.Network.Rinkeby
         or network_version == eth_models.Network.Ganache
+        or network_version == eth_models.Network.Mainnet
     )
 
 
@@ -403,7 +403,8 @@ async def test_get_block_transaction_count_by_hash(
 ):
     """Test getting the block transaction count by hash."""
     assert isinstance(
-        (await async_rpc.get_block_transaction_count_by_hash(zero_block_hash)), int,
+        (await async_rpc.get_block_transaction_count_by_hash(zero_block_hash)),
+        int,
     )
 
 
@@ -426,7 +427,8 @@ async def test_get_block_transaction_count_by_number(
 async def test_get_uncle_count_by_block_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting the uncle block count by hash."""
     assert isinstance(
-        (await async_rpc.get_uncle_count_by_block_hash(zero_block_hash)), int,
+        (await async_rpc.get_uncle_count_by_block_hash(zero_block_hash)),
+        int,
     )
 
 
