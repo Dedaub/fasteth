@@ -68,8 +68,7 @@ class RPCSchema(tuple, Enum):
 
 
 class Ethable(ABC, BaseModel):
-    """Abstract base class for classes presenting an explicit conversion for eth RPC
-    """
+    """Abstract base class for classes presenting an explicit conversion for eth RPC"""
 
     @abstractmethod
     def dict(self) -> Dict:
@@ -379,7 +378,7 @@ class Transaction(AutoEthable):
     s: Optional[eth_types.Signature] = None
 
 
-class Block(AutoEthable):
+class BaseBlock:
     # noinspection PyUnresolvedReferences
     """The block object.
 
@@ -434,7 +433,14 @@ class Block(AutoEthable):
     gasUsed: int
     timestamp: datetime
     uncles: List[eth_types.Hash32]
+
+
+class FullBlock(AutoEthable, BaseBlock):
     transactions: List[Transaction] = Field(default_factory=list)
+
+
+class PartialBlock(AutoEthable, BaseBlock):
+    transactions: List[eth_types.Hash32] = Field(default_factory=list)
 
 
 class WhisperFilter(AutoEthable):

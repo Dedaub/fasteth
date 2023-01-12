@@ -528,14 +528,14 @@ async def test_estimate_gas(async_rpc: fasteth.AsyncEthereumJSONRPC):
 async def test_get_block_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a block by number."""
     block = await async_rpc.get_block_by_hash(zero_block_hash, True)
-    assert isinstance(block, eth_models.Block)
+    assert isinstance(block, eth_models.BaseBlock)
 
 
 @pytest.mark.asyncio
 async def test_get_block_by_number(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a block by number."""
     block = await async_rpc.get_block_by_number(eth_types.BlockNumber(0), True)
-    assert isinstance(block, eth_models.Block)
+    assert isinstance(block, eth_models.BaseBlock)
 
 
 @pytest.mark.asyncio

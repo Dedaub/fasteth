@@ -661,8 +661,10 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         return ret
 
     async def get_block_by_hash(
-        self, block_id: eth_types.Hash32, full: bool = False,
-    ) -> Optional[eth_models.Block]:
+        self,
+        block_id: eth_types.Hash32,
+        full: bool = False,
+    ) -> Optional[eth_models.FullBlock | eth_models.PartialBlock]:
         """Returns information about a block by hash.
 
         Calls the eth_getBlockByHash.
@@ -681,11 +683,16 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 params=[eth_utils.to_eth_converters[eth_types.Hash32](block_id), full],
             )
         )
-        return eth_models.Block.parse_obj(data)
+        return (
+            eth_models.FullBlock.parse_obj(data)
+            if full
+            else eth_models.PartialBlock.parse_obj(data)
+        )
 
     async def get_block_by_number(
         self, block_id: eth_types.DefaultBlockIdentifier, full: bool
-    ) -> Optional[eth_models.Block]:
+    ) -> Optional[eth_models.FullBlock | eth_models.PartialBlock]:
+
         """Returns information about a block by block number.
 
         Calls the eth_getBlockByNumber.
@@ -702,18 +709,25 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         """
         if block_id not in ["pending", "latest", "earliest"]:
             block_id = eth_utils.to_eth_converters[int](block_id)
-        return eth_models.Block.parse_obj(
-            await self.rpc(
-                eth_models.JSONRPCRequest(
-                    method=self.rpc_schema.get_block_by_number[0],
-                    id=self.rpc_schema.get_block_by_number[1],
-                    params=[block_id, full],
-                )
+
+        data = await self.rpc(
+            eth_models.JSONRPCRequest(
+                method=self.rpc_schema.get_block_by_number[0],
+                id=self.rpc_schema.get_block_by_number[1],
+                params=[block_id, full],
             )
         )
 
+        return (
+            eth_models.FullBlock.parse_obj(data)
+            if full
+            else eth_models.PartialBlock.parse_obj(data)
+        )
+
     async def submit_hashrate(
-        self, hashrate: eth_types.HexStr, identifier: eth_types.HexStr,
+        self,
+        hashrate: eth_types.HexStr,
+        identifier: eth_types.HexStr,
     ) -> bool:
         """Return code at a given address during specified block.
 
