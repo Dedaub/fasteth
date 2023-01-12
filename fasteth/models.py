@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from fasteth import exceptions as eth_exp
 from fasteth import types as eth_types
 from fasteth import utils
+from functools import reduce
 
 
 class Network(int, Enum):
@@ -115,7 +116,11 @@ class AutoEthable(Ethable):
         # Dictionary for eth RPC Request JSON
         r: Dict = {}
 
-        for k, t in self.__annotations__.items():
+        annotations = dict(self.__annotations__.items())
+        for an in [base.__annotations__.items() for base in self.__bases__]:
+            annotations.update(an)
+
+        for k, t in annotations.items():
             v = getattr(self, k)
             # Workaround python built-in
             if v is None:
@@ -155,7 +160,11 @@ class AutoEthable(Ethable):
         if FROM in data:
             data[FROM_KEY] = data.pop(FROM)
 
-        for k, t in cls.__annotations__.items():
+        annotations = dict(cls.__annotations__.items())
+        for an in [base.__annotations__.items() for base in cls.__bases__]:
+            annotations.update(an)
+
+        for k, t in annotations.items():
             # We only need to access the value once.
             v = data.get(k)
 
@@ -378,7 +387,7 @@ class Transaction(AutoEthable):
     s: Optional[eth_types.Signature] = None
 
 
-class BaseBlock:
+class BaseBlock(AutoEthable):
     # noinspection PyUnresolvedReferences
     """The block object.
 
@@ -435,11 +444,11 @@ class BaseBlock:
     uncles: List[eth_types.Hash32]
 
 
-class FullBlock(AutoEthable, BaseBlock):
+class FullBlock(BaseBlock):
     transactions: List[Transaction] = Field(default_factory=list)
 
 
-class PartialBlock(AutoEthable, BaseBlock):
+class PartialBlock(BaseBlock):
     transactions: List[eth_types.Hash32] = Field(default_factory=list)
 
 
