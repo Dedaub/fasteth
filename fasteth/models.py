@@ -46,6 +46,7 @@ class RPCSchema(tuple, Enum):
     get_block_by_hash = ("eth_getBlockByHash", 1)
     get_block_transaction_count_by_hash = ("eth_getBlockTransactionCountByHash", 1)
     get_block_transaction_count_by_number = ("eth_getBlockTransactionCountByNumber", 1)
+    get_transaction_by_hash = ("eth_getTransactionByHash", 1)
     get_uncle_count_by_block_hash = ("eth_getUncleCountByBlockHash", 1)
     get_uncle_count_by_block_number = ("eth_getUncleCountByBlockNumber", 1)
     get_shh_messages = ("shh_getMessages", 73)
@@ -442,6 +443,7 @@ class BaseBlock(AutoEthable):
     gasUsed: int
     timestamp: datetime
     uncles: List[eth_types.Hash32]
+    baseFeePerGas: Optional[int] = None
 
 
 class FullBlock(BaseBlock):

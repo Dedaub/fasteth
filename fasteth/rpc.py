@@ -438,6 +438,8 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             )
         )
 
+    
+
     async def get_uncle_count_by_block_hash(self, block_hash: eth_types.Hash32) -> int:
         """Returns the number of uncles from a block matching the given block_hash.
 
@@ -722,6 +724,31 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             eth_models.FullBlock.parse_obj(data)
             if full
             else eth_models.PartialBlock.parse_obj(data)
+        )
+
+    async def get_transaction_by_hash(
+        self,
+        tx_hash: eth_types.Hash32,
+    ) -> Optional[eth_models.Transaction]:
+        """Returns information about a transaction by hash.
+
+        Calls the eth_getTransactionByHash.
+
+        :param tx_hash: eth_types.Hash32 of a transaction.
+        
+
+        :returns
+            eth_models.Transaction: A Transaction object, or None when no tx found.
+        """
+        data = await self.rpc(
+            eth_models.JSONRPCRequest(
+                method=self.rpc_schema.get_transaction_by_hash[0],
+                id=self.rpc_schema.get_transaction_by_hash[1],
+                params=[tx_hash],
+            )
+        )
+        return (
+            eth_models.Transaction.parse_obj(data)
         )
 
     async def submit_hashrate(
