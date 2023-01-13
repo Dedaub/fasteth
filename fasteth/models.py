@@ -118,7 +118,7 @@ class AutoEthable(Ethable):
         r: Dict = {}
 
         annotations = dict(self.__annotations__.items())
-        for an in [base.__annotations__.items() for base in self.__bases__]:
+        for an in [base.__annotations__.items() for base in self.__class__.__bases__]:
             annotations.update(an)
 
         for k, t in annotations.items():
@@ -160,6 +160,8 @@ class AutoEthable(Ethable):
         """
         if FROM in data:
             data[FROM_KEY] = data.pop(FROM)
+
+        print(cls.__bases__)
 
         annotations = dict(cls.__annotations__.items())
         for an in [base.__annotations__.items() for base in cls.__bases__]:

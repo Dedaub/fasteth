@@ -527,8 +527,10 @@ async def test_estimate_gas(async_rpc: fasteth.AsyncEthereumJSONRPC):
 @pytest.mark.asyncio
 async def test_get_block_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a block by number."""
-    block = await async_rpc.get_block_by_hash(zero_block_hash, True)
-    assert isinstance(block, eth_models.BaseBlock)
+    block = await async_rpc.get_block_by_hash(bytes.fromhex("ec1ec1738c4b62b6c519c3e24b3030927317a42b17907dc94d96f947df1d2267"), True)
+    assert isinstance(block, eth_models.FullBlock)
+    assert block.number == 16397796
+    assert block.baseFeePerGas == 14879286010
 
 
 @pytest.mark.asyncio
@@ -656,6 +658,16 @@ async def test_get_shh_messages(async_rpc: fasteth.AsyncEthereumJSONRPC):
     except fasteth.exceptions.JSONRPCError:
         pass
 
+@pytest.mark.asyncio
+async def test_get_transaction_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
+    """Test getting a tx by hash."""
+    tx = await async_rpc.get_transaction_by_hash("0x270c9f96972fa465d2e2efa1c68ea6117e48b3e5d21ce0dcce2f72bda9f2cbdb")
+    assert isinstance(tx, eth_models.Transaction)
+    assert tx.from_address == "0xd2090025857b9c7b24387741f120538e928a3a59"
+    assert tx.to == "0x4675c7e5baafbffbca748158becba61ef3b0a263"
+    # assert tx.blockHash == "0xec1ec1738c4b62b6c519c3e24b3030927317a42b17907dc94d96f947df1d2267"
+    blockByHash = await async_rpc.get_block_by_hash(tx.blockHash, full=False)
+    assert blockByHash.number == tx.blockNumber
 
 if __name__ == "__main__":
     """For running directly via CLI."""
