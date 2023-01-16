@@ -108,7 +108,7 @@ class AutoEthable(Ethable):
     Use with that in mind.
     """
 
-    def dict(self: Type[T]) -> Dict:
+    def dict(self: Type[T], *args, **kwargs) -> Dict:
         """Returns a dict for submission in an RPC request.
 
         :returns
