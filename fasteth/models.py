@@ -161,8 +161,6 @@ class AutoEthable(Ethable):
         if FROM in data:
             data[FROM_KEY] = data.pop(FROM)
 
-        print(cls.__bases__)
-
         annotations = dict(cls.__annotations__.items())
         for an in [base.__annotations__.items() for base in cls.__bases__]:
             annotations.update(an)
