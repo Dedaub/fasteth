@@ -15,6 +15,6 @@ poetry install
 ```sh
 npm install ganache --global
 ssh -L 8090:127.0.0.1:8090 node-portal -N &
-ganache --fork "http://127.0.0.1:8090/ethereum"
+ganache --fork "http://127.0.0.1:8090/ethereum" &> ganache.log &
 pytest
 ```

@@ -1,14 +1,12 @@
 # 3rd party imports
-from typing import Any, List, Optional, Union
+from typing import Any
 
 # noinspection PyPackageRequirements
 import httpx
 import orjson
-from eth_utils import conversions
+from eth_utils.conversions import to_hex, to_int
 
-from fasteth import models as eth_models
-from fasteth import types as eth_types
-from fasteth import utils as eth_utils
+from fasteth import models, types, utils
 
 # TODO(Websocket support)
 # TODO(IPC Support)
@@ -20,8 +18,8 @@ from fasteth import utils as eth_utils
 
 # pile of "magic" variables to deal with.
 # TODO(move these out of the module scope)
-default_block_id: eth_types.DefaultBlockIdentifier = "latest"
-position_zero: eth_types.Data = eth_utils.to_eth_converters[eth_types.Data]("0x0")
+default_block_id: types.DefaultBlockIdentifier = "latest"
+position_zero: types.Data = utils.to_eth_converters[types.Data]("0x0")
 result_key = "result"
 localhost = "http://localhost:8545/"
 json_headers = {"Content-Type": "application/json"}
@@ -39,7 +37,7 @@ class AsyncJSONRPCCore(httpx.AsyncClient):
         super().__init__(http2=http2)
         self.rpc_uri = rpc_uri
 
-    async def rpc(self, rpc_request: eth_models.JSONRPCRequest) -> Any:
+    async def rpc(self, rpc_request: models.JSONRPCRequest) -> Any:
         """Return JSONRPCResponse for the JSONRPCRequest, executing a RPC.
 
         :raises eth_exceptions.JSONRPCError
@@ -53,9 +51,7 @@ class AsyncJSONRPCCore(httpx.AsyncClient):
         # We want to raise here http errors.
         response.raise_for_status()
         # Now we get back the JSON and do error handling.
-        rpc_response = eth_models.JSONRPCResponse.parse_obj(
-            orjson.loads(response.content)
-        )
+        rpc_response = models.JSONRPCResponse.parse_obj(orjson.loads(response.content))
         if rpc_response.error:
             rpc_response.error.raise_for_error()
         return rpc_response.result
@@ -72,7 +68,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
     creating this.
     """
 
-    rpc_schema = eth_models.RPCSchema
+    rpc_schema = models.RPCSchema
 
     async def client_version(self) -> str:
         """Return the current ethereum client version as a string.
@@ -83,33 +79,33 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             string: The current client version.
         """
         return await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.client_version[0],
                 id=self.rpc_schema.client_version[1],
             )
         )
 
-    async def sha3(self, data: eth_types.Data) -> eth_types.Data:
+    async def sha3(self, data: types.Data) -> types.Data:
         """Returns the Keccak-256 of the given data.
 
         Consider using eth_utils.sha3 instead to save the round trip.
 
-        :param data: Bytes of eth_types.Data to Keccak-256 hash.
+        :param data: Bytes of types.Data to Keccak-256 hash.
 
         :returns
-            eth_types.Data: Keccak-256 bytes of eth_types.Data
+            types.Data: Keccak-256 bytes of types.Data
         """
-        return eth_utils.to_py_converters[eth_types.Hash32](
+        return utils.to_py_converters[types.Hash32](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.sha3[0],
                     id=self.rpc_schema.sha3[1],
-                    params=[eth_utils.to_eth_converters[eth_types.Data](data)],
+                    params=[utils.to_eth_converters[types.Data](data)],
                 )
             )
         )
 
-    async def network_version(self) -> eth_models.Network:
+    async def network_version(self) -> models.Network:
         """Returns the current network ID.
 
         Calls net_version.
@@ -119,10 +115,10 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         """
         # noinspection PyArgumentList
         # PyCharm is incorrect here.
-        return eth_models.Network(
+        return models.Network(
             int(
                 await self.rpc(
-                    eth_models.JSONRPCRequest(
+                    models.JSONRPCRequest(
                         method=self.rpc_schema.network_version[0],
                         id=self.rpc_schema.network_version[1],
                     )
@@ -138,7 +134,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             bool: True when listening, otherwise False"""
         return await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.network_listening[0],
                 id=self.rpc_schema.network_listening[1],
             )
@@ -152,9 +148,9 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             int: number of connected peers
         """
-        return eth_utils.to_py_converters[int](
+        return utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.network_peer_count[0],
                     id=self.rpc_schema.network_peer_count[1],
                 )
@@ -168,28 +164,28 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
         :returns
             int: The current Ethereum protocol version as an Integer."""
-        return eth_utils.to_py_converters[int](
+        return utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.protocol_version[0],
                     id=self.rpc_schema.protocol_version[1],
                 )
             )
         )
 
-    async def syncing(self) -> eth_models.SyncStatus:
+    async def syncing(self) -> models.SyncStatus:
         """Returns an object with sync status data.
 
         Calls eth_syncing.
 
         :returns
-            eth_models.SyncStatus or False: with sync status data or False when
+            models.SyncStatus or False: with sync status data or False when
                                                not syncing.
         """
         # It mystifies me why this can't return a proper JSON boolean.
-        result = eth_utils.result_truthiness(
+        result = utils.result_truthiness(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.syncing[0], id=self.rpc_schema.syncing[1]
                 )
             )
@@ -197,11 +193,11 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
         if result:
             result["syncing"] = True
-            return eth_models.SyncStatus.parse_obj(result)
+            return models.SyncStatus.parse_obj(result)
         else:
-            return eth_models.SyncStatus(syncing=False)
+            return models.SyncStatus(syncing=False)
 
-    async def coinbase(self) -> eth_types.HexAddress:
+    async def coinbase(self) -> types.HexAddress:
         """Returns the client coinbase address
 
         Calls eth_coinbase.
@@ -211,9 +207,9 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :raises
            :exception JSONRPCError: when this method is not supported.
         """
-        return eth_types.HexAddress(
+        return types.HexAddress(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.coinbase[0], id=self.rpc_schema.coinbase[1]
                 )
             )
@@ -228,9 +224,9 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             bool: True if the client is mining, otherwise False
         """
         # Why can this RPC actually return a bool?
-        return eth_utils.result_truthiness(
+        return utils.result_truthiness(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.mining[0], id=self.rpc_schema.mining[1]
                 )
             )
@@ -244,9 +240,9 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns:
             int:Number of hashes per second.
         """
-        return eth_utils.to_py_converters[int](
+        return utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.hashrate[0], id=self.rpc_schema.mining[1]
                 )
             )
@@ -260,24 +256,24 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             int:integer of the current gas price in wei.
         """
-        return eth_utils.to_py_converters[int](
+        return utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.gas_price[0], id=self.rpc_schema.gas_price[1]
                 )
             )
         )
 
-    async def accounts(self) -> list[eth_types.HexAddress]:
+    async def accounts(self) -> list[types.HexAddress]:
         """Returns a list of addresses owned by the client.
 
         Calls eth_accounts.
 
         :returns
-            list: A list of eth_types.Address owned by the client.
+            list: A list of types.Address owned by the client.
         """
         result = await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.accounts[0], id=self.rpc_schema.accounts[1]
             )
         )
@@ -290,11 +286,11 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         Calls eth_blockNumber.
 
         :returns
-            eth_types.BlockNumber: The current block number a client is on as an int.
+            types.BlockNumber: The current block number a client is on as an int.
         """
-        return eth_utils.to_py_converters[int](
+        return utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.block_number[0],
                     id=self.rpc_schema.block_number[1],
                 )
@@ -303,23 +299,23 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
     async def get_balance(
         self,
-        address: eth_types.HexAddress,
-        block_identifier: eth_types.DefaultBlockIdentifier = default_block_id,
+        address: types.HexAddress,
+        block_identifier: types.DefaultBlockIdentifier = default_block_id,
     ) -> int:
         """Returns the balance of the given address during the given block block_number.
 
         Calls eth_getBalance.
 
         :param address: an ethereum address to get the balance of.
-        :param block_identifier: an eth_types.DefaultBlockIdentifier of the block
+        :param block_identifier: an types.DefaultBlockIdentifier of the block
                                  number to check at.
 
         :returns
             int: The balance in wei during block_number.
         """
-        return eth_utils.to_py_converters[int](
+        return utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.get_balance[0],
                     id=self.rpc_schema.get_balance[1],
                     params=[address, block_identifier],
@@ -329,10 +325,10 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
     async def get_storage_at(
         self,
-        address: eth_types.HexAddress,
+        address: types.HexAddress,
         position: int = 0,
-        block_identifier: eth_types.DefaultBlockIdentifier = default_block_id,
-    ) -> eth_types.Data:
+        block_identifier: types.DefaultBlockIdentifier = default_block_id,
+    ) -> types.Data:
         """Returns storage from position at a given address during block_identifier.
 
         Calls eth_getStorageAt.
@@ -343,22 +339,22 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
         eth_utils.keccak and eth-hash are useful here as well.
 
-        :param address: eth_types.Address address of the storage.
-        :param position: integer as eth_types.Data of the position in the storage.
-        :param block_identifier: eth_types.DefaultBlockIdentifier for the block to
+        :param address: types.Address address of the storage.
+        :param position: integer as types.Data of the position in the storage.
+        :param block_identifier: types.DefaultBlockIdentifier for the block to
                                  retrieve from.
 
-        :returns eth_types.Data: containing the data at the address, position,
+        :returns types.Data: containing the data at the address, position,
                                  block_identifier.
         """
-        return eth_utils.to_py_converters[eth_types.Data](
+        return utils.to_py_converters[types.Data](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.get_storage_at[0],
                     id=self.rpc_schema.get_storage_at[1],
                     params=[
                         address,
-                        eth_utils.to_eth_converters[int](position),
+                        utils.to_eth_converters[int](position),
                         block_identifier,
                     ],
                 )
@@ -367,21 +363,21 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
     async def get_transaction_count(
         self,
-        address: eth_types.HexAddress,
-        block_identifier: eth_types.DefaultBlockIdentifier = default_block_id,
+        address: types.HexAddress,
+        block_identifier: types.DefaultBlockIdentifier = default_block_id,
     ) -> int:
         """Returns the number of transactions sent from an address.
 
         Calls eth_getTransactionCount
 
         :param address: address to get count for.
-        :param block_identifier: eth_types.DefaultBlockIdentifier to get count at.
+        :param block_identifier: types.DefaultBlockIdentifier to get count at.
 
         :returns int: The number of transactions sent from address.
         """
-        return eth_utils.to_py_converters[int](
+        return utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.get_transaction_count[0],
                     id=self.rpc_schema.get_transaction_count[1],
                     params=[address, block_identifier],
@@ -391,7 +387,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
     # TODO(conversion from block number to hash)
     async def get_block_transaction_count_by_hash(
-        self, block_hash: eth_types.Hash32
+        self, block_hash: types.Hash32
     ) -> int:
         """Returns the number of txns in a block matching the given block_hash.
 
@@ -399,23 +395,23 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
         Can raise an exception converting integer if block_hash is is invalid.
 
-        :param block_hash: eth_types.Hash32 of the block.
+        :param block_hash: types.Hash32 of the block.
 
         :returns
             int: Transaction count for given block.
         """
-        return eth_utils.to_py_converters[int](
+        return utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.get_block_transaction_count_by_hash[0],
                     id=self.rpc_schema.get_block_transaction_count_by_hash[1],
-                    params=[eth_utils.to_eth_converters[eth_types.Hash32](block_hash)],
+                    params=[utils.to_eth_converters[types.Hash32](block_hash)],
                 )
             )
         )
 
     async def get_block_transaction_count_by_number(
-        self, block_identifier: eth_types.DefaultBlockIdentifier
+        self, block_identifier: types.DefaultBlockIdentifier
     ) -> int:
         """Returns the number of txns in a block matching the given block_identifier.
 
@@ -423,14 +419,14 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
         Can raise an exception converting integer if block_identifier is is invalid.
 
-        :param block_identifier: eth_types.DefaultBlockIdentifier of the block.
+        :param block_identifier: types.DefaultBlockIdentifier of the block.
 
         :returns
             int: Transaction count for given block.
         """
-        return eth_utils.to_py_converters[int](
+        return utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.get_block_transaction_count_by_number[0],
                     id=self.rpc_schema.get_block_transaction_count_by_number[1],
                     params=[block_identifier],
@@ -438,32 +434,30 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             )
         )
 
-    
-
-    async def get_uncle_count_by_block_hash(self, block_hash: eth_types.Hash32) -> int:
+    async def get_uncle_count_by_block_hash(self, block_hash: types.Hash32) -> int:
         """Returns the number of uncles from a block matching the given block_hash.
 
         Calls eth_getUncleCountByBlockHash.
 
         Can raise an exception converting integer if block_hash is is invalid.
 
-        :param block_hash: eth_types.HexAddress hash of the block.
+        :param block_hash: types.HexAddress hash of the block.
 
         :returns
             int: number of uncles in this block.
         """
-        return eth_utils.conversions.to_int(
+        return to_int(
             hexstr=await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.get_uncle_count_by_block_hash[0],
                     id=self.rpc_schema.get_uncle_count_by_block_hash[1],
-                    params=[eth_utils.to_eth_converters[eth_types.Hash32](block_hash)],
+                    params=[utils.to_eth_converters[types.Hash32](block_hash)],
                 )
             )
         )
 
     async def get_uncle_count_by_block_number(
-        self, block_identifier: eth_types.DefaultBlockIdentifier
+        self, block_identifier: types.DefaultBlockIdentifier
     ) -> int:
         """Returns the number of uncles block matching the given block_identifier.
 
@@ -471,14 +465,14 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
         Can raise an exception converting integer if block_identifier is is invalid.
 
-        :param block_identifier: eth_types.DefaultBlockIdentifier of the block.
+        :param block_identifier: types.DefaultBlockIdentifier of the block.
 
         :returns
             int: number of uncles in this block.
         """
-        return eth_utils.conversions.to_int(
+        return to_int(
             hexstr=await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.get_uncle_count_by_block_number[0],
                     id=self.rpc_schema.get_uncle_count_by_block_number[1],
                     params=[block_identifier],
@@ -488,20 +482,20 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
     async def get_code(
         self,
-        address: eth_types.HexAddress,
-        block_identifier: eth_types.DefaultBlockIdentifier = default_block_id,
-    ) -> eth_types.Data:
+        address: types.HexAddress,
+        block_identifier: types.DefaultBlockIdentifier = default_block_id,
+    ) -> types.Data:
         """Return code at a given address during specified block.
 
         :param address: The address to retrieve the code from.
         :param block_identifier: the block during which to get the code from.
 
         :returns
-            eth_types.HexStr: string in hex format containing the code as data.
+            types.HexStr: string in hex format containing the code as data.
         """
-        return eth_utils.to_py_converters[eth_types.Data](
+        return types.Data(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.get_code[0],
                     id=self.rpc_schema.get_code[1],
                     params=[address, block_identifier],
@@ -510,8 +504,8 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         )
 
     async def sign(
-        self, address: eth_types.HexAddress, message: eth_types.HexStr
-    ) -> eth_types.Data:
+        self, address: types.HexAddress, message: types.HexStr
+    ) -> types.Data:
         """Returns an signed message.
 
         sign(keccak256("\x19Ethereum Signed Message:\n" + len(message) + message)))
@@ -531,54 +525,50 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :param message: hex string of n bytes, message to sign.
 
         :returns
-            eth_types.Data: signature
+            types.Data: signature
         """
         return await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.sign[0],
                 id=self.rpc_schema.sign[1],
                 params=[address, message],
             )
         )
 
-    async def sign_transaction(
-        self, transaction: eth_models.Transaction
-    ) -> eth_types.HexStr:
-        """Returns a signed transaction object as eth_types.HexStr.
+    async def sign_transaction(self, transaction: models.Transaction) -> types.HexStr:
+        """Returns a signed transaction object as types.HexStr.
 
         Signs and returns a transaction that can be submitted to the network at a
         later time using with send_raw_transaction.
 
         Calls eth_signTransaction
 
-        :param transaction: eth_models.Transaction object to sign.
+        :param transaction: models.Transaction object to sign.
 
         :returns
-           eth_types.HexStr: The signed transaction object.
+           types.HexStr: The signed transaction object.
         """
         return await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.sign_transaction[0],
                 id=self.rpc_schema.sign_transaction[1],
                 params=[transaction.dict()],
             )
         )
 
-    async def send_transaction(
-        self, transaction: eth_models.Transaction
-    ) -> eth_types.HexStr:
+    async def send_transaction(self, transaction: models.Transaction) -> types.HexStr:
         """Creates new message call transaction or a contract creation.
 
-        :param transaction: eth_models.Transaction object to send.
+        :param transaction: models.Transaction object to send.
 
         :returns
-           eth_types.HexStr: the transaction hash, or the zero hash if the transaction
+           types.HexStr: the transaction hash, or the zero hash if the transaction
                              is not yet available.
         """
 
-        return eth_types.HexStr(
+        return types.HexStr(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.send_transaction[0],
                     id=self.rpc_schema.send_transaction[1],
                     params=[transaction.dict()],
@@ -586,7 +576,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             )
         )
 
-    async def send_raw_transaction(self, data: eth_types.HexStr) -> eth_types.HexStr:
+    async def send_raw_transaction(self, data: types.HexStr) -> types.HexStr:
         """Creates new transaction or a contract creation for signed transactions.
 
         # TODO(Handle reverted execution)
@@ -594,12 +584,12 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :param data: The signed transaction data.
 
         :returns
-           eth_types.HexStr: the transaction hash, or the zero hash if the transaction
+           types.HexStr: the transaction hash, or the zero hash if the transaction
                              is not yet available.
         """
-        return eth_types.HexStr(
+        return types.HexStr(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.send_raw_transaction[0],
                     id=self.rpc_schema.send_raw_transaction[1],
                     params=[data],
@@ -609,21 +599,21 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
     async def call(
         self,
-        transaction: eth_models.Transaction,
-        block_identifier: eth_types.DefaultBlockIdentifier,
-    ) -> eth_types.HexStr:
+        transaction: models.Transaction,
+        block_identifier: types.DefaultBlockIdentifier,
+    ) -> types.HexStr:
         """Execute a new message call without creating a new block chain transaction.
 
         Calls eth_call.
 
-        :param transaction: eth_models.Transaction call object.
+        :param transaction: models.Transaction call object.
         :param block_identifier: block to call the transaction against.
 
         :returns
-           eth_types.data: The return value of executed contract.
+           types.data: The return value of executed contract.
         """
         return await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.call[0],
                 id=self.rpc_schema.call[1],
                 params=[transaction.dict(), block_identifier],
@@ -632,8 +622,8 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
     async def estimate_gas(
         self,
-        transaction: eth_models.Transaction,
-        block_identifier: eth_types.DefaultBlockIdentifier,
+        transaction: models.Transaction,
+        block_identifier: types.DefaultBlockIdentifier,
     ) -> int:
         """Returns an estimate of how much gas is necessary to complete the transaction.
 
@@ -645,15 +635,15 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
         Calls eth_estimateGas.
 
-        :param transaction: eth_models.Transaction call object.
+        :param transaction: models.Transaction call object.
         :param block_identifier: block to call the transaction against.
 
         :returns
            int: The amount of gas used.
         """
-        ret: int = eth_utils.to_py_converters[int](
+        ret: int = utils.to_py_converters[int](
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.estimate_gas[0],
                     id=self.rpc_schema.estimate_gas[1],
                     params=[transaction.dict(), block_identifier],
@@ -664,36 +654,36 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
 
     async def get_block_by_hash(
         self,
-        block_id: eth_types.Hash32,
+        block_id: types.Hash32,
         full: bool = False,
-    ) -> Optional[eth_models.FullBlock | eth_models.PartialBlock]:
+    ) -> models.FullBlock | models.PartialBlock | None:
         """Returns information about a block by hash.
 
         Calls the eth_getBlockByHash.
 
-        :param block_id: eth_types.Hash32 of a block.
+        :param block_id: types.Hash32 of a block.
         :param full: If True it returns the full transaction objects, if False
                      only the hashes of the transactions.
 
         :returns
-            Union[eth_models.Block, None]: A block object, or None when no block found.
+            Union[models.Block, None]: A block object, or None when no block found.
         """
         data = await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.get_block_by_hash[0],
                 id=self.rpc_schema.get_block_by_hash[1],
-                params=[eth_utils.to_eth_converters[eth_types.Hash32](block_id), full],
+                params=[utils.to_eth_converters[types.Hash32](block_id), full],
             )
         )
         return (
-            eth_models.FullBlock.parse_obj(data)
+            models.FullBlock.parse_obj(data)
             if full
-            else eth_models.PartialBlock.parse_obj(data)
+            else models.PartialBlock.parse_obj(data)
         )
 
     async def get_block_by_number(
-        self, block_id: eth_types.DefaultBlockIdentifier, full: bool
-    ) -> Optional[eth_models.FullBlock | eth_models.PartialBlock]:
+        self, block_id: types.DefaultBlockIdentifier, full: bool
+    ) -> models.FullBlock | models.PartialBlock | None:
 
         """Returns information about a block by block number.
 
@@ -706,14 +696,14 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                      only the hashes of the transactions.
 
         :returns
-            Union[eth_models.Block, None]: A block object, or None when no block was
+            Union[models.Block, None]: A block object, or None when no block was
                                          found.
         """
         if block_id not in ["pending", "latest", "earliest"]:
-            block_id = eth_utils.to_eth_converters[int](block_id)
+            block_id = utils.to_eth_converters[int](block_id)
 
         data = await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.get_block_by_number[0],
                 id=self.rpc_schema.get_block_by_number[1],
                 params=[block_id, full],
@@ -721,40 +711,38 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         )
 
         return (
-            eth_models.FullBlock.parse_obj(data)
+            models.FullBlock.parse_obj(data)
             if full
-            else eth_models.PartialBlock.parse_obj(data)
+            else models.PartialBlock.parse_obj(data)
         )
 
     async def get_transaction_by_hash(
         self,
-        tx_hash: eth_types.Hash32,
-    ) -> Optional[eth_models.Transaction]:
+        tx_hash: types.Hash32,
+    ) -> models.Transaction | None:
         """Returns information about a transaction by hash.
 
         Calls the eth_getTransactionByHash.
 
-        :param tx_hash: eth_types.Hash32 of a transaction.
-        
+        :param tx_hash: types.Hash32 of a transaction.
+
 
         :returns
-            eth_models.Transaction: A Transaction object, or None when no tx found.
+            models.Transaction: A Transaction object, or None when no tx found.
         """
         data = await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.get_transaction_by_hash[0],
                 id=self.rpc_schema.get_transaction_by_hash[1],
                 params=[tx_hash],
             )
         )
-        return (
-            eth_models.Transaction.parse_obj(data)
-        )
+        return models.Transaction.parse_obj(data)
 
     async def submit_hashrate(
         self,
-        hashrate: eth_types.HexStr,
-        identifier: eth_types.HexStr,
+        hashrate: types.HexStr,
+        identifier: types.HexStr,
     ) -> bool:
         """Return code at a given address during specified block.
 
@@ -766,9 +754,9 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             bool: True if submitting went through and false otherwise.
         """
-        return eth_utils.result_truthiness(
+        return utils.result_truthiness(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.submit_hashrate[0],
                     id=self.rpc_schema.submit_hashrate[1],
                     params=[hashrate, identifier],
@@ -785,12 +773,12 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             str: The current whisper protocol version.
         """
         return await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.shh_version[0], id=self.rpc_schema.shh_version[1]
             )
         )
 
-    async def shh_post(self, whisper: eth_models.Message) -> bool:
+    async def shh_post(self, whisper: models.Message) -> bool:
         """Sends a whisper message.
 
         Calls shh_post.
@@ -800,30 +788,35 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             bool: Returns true if the message was send, otherwise false.
         """
-        return await self.rpc(
-            eth_models.JSONRPCRequest(
-                method=self.rpc_schema.shh_post[0],
-                id=self.rpc_schema.shh_post[1],
-                params=[whisper.dict()],
+
+        print(
+            x := await self.rpc(
+                models.JSONRPCRequest(
+                    method=self.rpc_schema.shh_post[0],
+                    id=self.rpc_schema.shh_post[1],
+                    params=[whisper.dict()],
+                )
             )
         )
+        print(type(x))
+        return x
 
-    async def shh_new_identity(self) -> eth_types.Data:
+    async def shh_new_identity(self) -> types.Data:
         """Creates new whisper identity in the client.
 
         Calls shh_newIdentity.
 
         :returns
-            eth_types.Data: The address of the new identity (60 Bytes).
+            types.Data: The address of the new identity (60 Bytes).
         """
         return await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.shh_new_identity[0],
                 id=self.rpc_schema.shh_new_identity[1],
             )
         )
 
-    async def shh_has_identity(self, identifier: eth_types.Data) -> bool:
+    async def shh_has_identity(self, identifier: types.Data) -> bool:
         """Checks if the client hold the private keys for a given identity.
 
         Calls shh_hasIdentity.
@@ -833,9 +826,9 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             bool: Returns true if the message was send, otherwise false.
         """
-        return eth_utils.result_truthiness(
+        return utils.result_truthiness(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.shh_has_identity[0],
                     id=self.rpc_schema.shh_has_identity[1],
                     params=[identifier],
@@ -843,22 +836,22 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             )
         )
 
-    async def shh_new_group(self) -> eth_types.Data:
+    async def shh_new_group(self) -> types.Data:
         """Create a new whisper group (?).
 
         Calls shh_newGroup.
 
         :returns
-            eth_types.Data: The address of the new group (60 Bytes).
+            types.Data: The address of the new group (60 Bytes).
         """
         return await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.shh_new_group[0],
                 id=self.rpc_schema.shh_new_group[1],
             )
         )
 
-    async def shh_add_to_group(self, identifier: eth_types.Data) -> bool:
+    async def shh_add_to_group(self, identifier: types.Data) -> bool:
         """Add an identity to a group (?).
 
         Calls shh_addToGroup.
@@ -869,9 +862,9 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             bool: Returns true if the identity was successfully added to the
                   group, otherwise false (?).
         """
-        return eth_utils.result_truthiness(
+        return utils.result_truthiness(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.shh_add_to_group[0],
                     id=self.rpc_schema.shh_add_to_group[1],
                     params=[identifier],
@@ -879,7 +872,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             )
         )
 
-    async def shh_new_filter(self, whisper_filter: eth_models.WhisperFilter) -> int:
+    async def shh_new_filter(self, whisper_filter: models.WhisperFilter) -> int:
         """Creates filter to notify, when client receives whisper message
         matching the filter options.
 
@@ -890,9 +883,9 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             int: The newly created filter.
         """
-        return eth_utils.conversions.to_int(
+        return to_int(
             await self.rpc(
-                eth_models.JSONRPCRequest(
+                models.JSONRPCRequest(
                     method=self.rpc_schema.shh_new_filter[0],
                     id=self.rpc_schema.shh_new_filter[1],
                     params=[whisper_filter.dict()],
@@ -914,14 +907,14 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                   otherwise false.
         """
         return await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.shh_uninstall_filter[0],
                 id=self.rpc_schema.shh_uninstall_filter[1],
-                params=[conversions.to_hex(identifier)],
+                params=[to_hex(identifier)],
             )
         )
 
-    async def get_shh_filter_changes(self, identifier: int) -> List[eth_models.Message]:
+    async def get_shh_filter_changes(self, identifier: int) -> list[models.Message]:
         """Polling method for whisper filters. Returns new messages since the
         last call of this method.
 
@@ -933,21 +926,19 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :param identifier: The filter id.
 
         :returns
-            List[eth_models.Messages]: Array of messages received since last poll.
+            List[models.Messages]: Array of messages received since last poll.
         """
         result = await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.get_shh_filter_changes[0],
                 id=self.rpc_schema.get_shh_filter_changes[1],
-                params=[conversions.to_hex(identifier)],
+                params=[to_hex(identifier)],
             )
         )
 
-        return eth_models.iterate_list(eth_models.Message, result)
+        return models.iterate_list(models.Message, result)
 
-    async def get_shh_messages(
-        self, identifier: int
-    ) -> Union[List[eth_models.Message], bool]:
+    async def get_shh_messages(self, identifier: int) -> list[models.Message] | bool:
         """Get all messages matching a filter. Unlike shh_getFilterChanges
         this returns all messages.
 
@@ -956,19 +947,19 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :param identifier: The filter id.
 
         :returns
-            List[eth_models.Messages]: Array of messages received.
+            List[models.Messages]: Array of messages received.
             bool: False if no messages.
         """
         result = await self.rpc(
-            eth_models.JSONRPCRequest(
+            models.JSONRPCRequest(
                 method=self.rpc_schema.get_shh_messages[0],
                 id=self.rpc_schema.get_shh_messages[1],
-                params=[conversions.to_hex(identifier)],
+                params=[to_hex(identifier)],
             )
         )
 
-        truthiness = eth_utils.result_truthiness(result)
+        truthiness = utils.result_truthiness(result)
         if isinstance(truthiness, bool):
             return truthiness
 
-        return eth_models.iterate_list(eth_models.Message, result)
+        return models.iterate_list(models.Message, result)

@@ -5,19 +5,19 @@ description = "A lightweight, python native, async interface for the Ethereum JS
 authors = ["0xAlcibiades <info@dontemail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 httpx = {extras = ["http2"], version = ">=0.16"}
-eth-typing = "^2.2.2"
-eth-utils = "^1.10.0"
+eth-typing = "^3.3.0"
+eth-utils = {version = "^2.1.0"}
 pydantic = "^1.8.1"
-eth-hash = {extras = ["pycryptodome"], version = "^0.3.1"}
 orjson = "^3.5.1"
-eth-account = "^0.5.4"
 setuptools = "^65.6.3"
+pycryptodome = "^3.17" # need this since eth-utils wont install a backend for eth-hash
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^7.0"
 pytest-asyncio = "^0.20.3"
+pytest-benchmark = "^4.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

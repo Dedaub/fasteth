@@ -1,49 +1,41 @@
 import asyncio
 import re
-from typing import AsyncGenerator, Dict, List, Optional, Type, Union
 
 import pytest
-from eth_utils import (
-    encode_hex,
-    to_bytes,
-    to_checksum_address,
-    to_hex,
-    to_int,
-    to_normalized_address,
-    to_text,
-)
+from eth_utils.address import to_checksum_address, to_normalized_address
+from eth_utils.conversions import to_bytes, to_hex, to_int, to_text
+from eth_utils.hexadecimal import encode_hex
 from pydantic import BaseModel
 
 import fasteth
-from fasteth import exceptions
-from fasteth import models as eth_models
-from fasteth import types as eth_types
-from fasteth import utils as eth_utils
+import fasteth.exceptions
+from fasteth import models, types, utils
 
 # TODO(add more rigorous testing and parametrized testing)
 # These are all "golden path" tests, if you will.
 
-test_address = eth_types.HexAddress(
-    eth_types.HexStr("0x36273803306a3C22bc848f8Db761e974697ece0d")
+test_address = types.HexAddress(
+    types.HexStr("0x36273803306a3C22bc848f8Db761e974697ece0d")
 )
 test_any_address = "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
-storage_address = eth_types.HexAddress(
-    eth_types.HexStr("0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB")
+storage_address = types.HexAddress(
+    types.HexStr("0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB")
 )
-test_data = eth_types.HexStr("0x00")
-zero_block = eth_types.HexAddress(eth_types.HexStr(test_data))
-zero_block_hash: eth_types.Hash32 = eth_utils.to_py_converters[eth_types.Hash32](
-    zero_block
-)
+test_data = types.HexStr("0x00")
+zero_block = types.HexAddress(types.HexStr(test_data))
+zero_block_hash: types.Hash32 = utils.to_py_converters[types.Hash32](zero_block)
 whisper_client = "2"
 # Full: Geth\/v[0-9]+\.[0-9]+\.[0-9]+\-[A-z]+\-[0-9A-f]+\/[A-z-0-9]+\/[A-z-0-9.]+
 infura_client = r"Geth\/v[0-9]+\.[0-9]+\.[0-9]+.+"
-ganache_client = r"EthereumJS\sTestRPC\/v[0-9]+\.[0-9]+\.[0-9]+\/ethereum\-js"
+
+ganache_client = (
+    r"Ganache\/v\d+\.\d+\.\d+\/EthereumJS TestRPC\/v\d+\.\d+\.\d+\/ethereum-js"
+)
 test_block_hash = "0xba6c9192229ef4fc8615b510abd2c602f3805b1e51ff8892fb0964e1988ba1e2"
-test_hashrate_rate = eth_types.HexStr(
+test_hashrate_rate = types.HexStr(
     "0x0000000000000000000000000000000000000000000000000000000000500000"
 )
-test_hashrate_id = eth_types.HexStr(
+test_hashrate_id = types.HexStr(
     "0x59daa26581d0acd1fce254fb7e85952f4c09d0915afd33d3886cd914bc7d283c"
 )
 test_hexstring = "0x74657374"  # "test"
@@ -52,34 +44,32 @@ test_block_id = "0xB6D1B0"
 test_data_list = ["0x74657374", "0x74657374"]
 test_topic_list = ["test", "test"]
 latest = "latest"
-test_whisper_filter = eth_models.WhisperFilter(
-    to=eth_utils.to_eth_converters[eth_types.HexAddress](test_address),
-    topics=test_topic_list,
+test_whisper_filter = models.WhisperFilter(
+    to=utils.to_eth_converters[types.HexAddress](test_address),
+    topics=test_topic_list,  # type: ignore
 )
 test_whisper_filter_id = 7
 test_whisper_id = 0
-test_whisper_address: eth_types.Data = eth_utils.to_py_converters[eth_types.Data](
-    test_data
-)
+test_whisper_address: types.Data = utils.to_py_converters[types.Data](test_data)
 
 
-class PyableTestBench(eth_models.Ethable, BaseModel):
+class PyableTestBench(models.Ethable, BaseModel):
     """Benchmark dataclass for the pyable utility function."""
 
-    hash32: eth_types.Hash32
-    address: eth_types.Address
-    checksumaddress: eth_types.ChecksumAddress
-    hexaddress: eth_types.HexAddress
-    hexstring: eth_types.HexStr
-    data: eth_types.Data
-    blocknumber: eth_types.BlockNumber
+    hash32: types.Hash32
+    address: types.Address
+    checksumaddress: types.ChecksumAddress
+    hexaddress: types.HexAddress
+    hexstring: types.HexStr
+    data: types.Data
+    blocknumber: types.BlockNumber
     integer: int
     # Cannot be set through dacite
-    data_list: Optional[list[eth_types.Data]] = None
-    anyaddress: Optional[eth_types.Address] = None
-    blockid: Optional[eth_types.BlockIdentifier] = None
+    data_list: list[types.Data] | None = None
+    anyaddress: types.Address | None = None
+    blockid: types.BlockIdentifier | None = None
 
-    def dict(self: Type[eth_models.T]) -> Dict:
+    def dict(self) -> dict:
         """Benchmark without AutoEthable."""
         return {
             "hash32": encode_hex(self.hash32),
@@ -89,14 +79,14 @@ class PyableTestBench(eth_models.Ethable, BaseModel):
             "anyaddress": to_normalized_address(self.anyaddress),
             "hexstring": to_hex(None, None, self.hexstring),
             "data": to_hex(None, None, self.data),
-            "data_list": list(map(lambda z: to_hex(None, None, z), self.data_list)),
+            "data_list": [to_hex(None, None, z) for z in self.data_list],
             "blocknumber": to_hex(self.blocknumber),
             "integer": to_hex(self.integer),
             "blockid": to_hex(self.blockid),
         }
 
     @classmethod
-    def parse_obj(cls: Type[eth_models.T], data: Dict):
+    def parse_obj(cls, data: dict):
         data["hash32"] = to_bytes(hexstr=data["hash32"])
         data["address"] = to_bytes(None, data["address"])
         data["hexaddress"] = to_normalized_address(data["hexaddress"])
@@ -104,26 +94,26 @@ class PyableTestBench(eth_models.Ethable, BaseModel):
         data["anyaddress"] = to_bytes(None, data["anyaddress"])
         data["hexstring"] = to_text(None, data["hexstring"])
         data["data"] = to_text(None, data["data"])
-        data["data_list"] = list(map(lambda z: to_text(z), data["data_list"]))
+        data["data_list"] = [to_text(z) for z in data["data_list"]]
         data["blocknumber"] = to_int(None, data["blocknumber"])
         data["integer"] = to_int(None, data["integer"])
         data["blockid"] = to_int(None, data["blockid"])
         return cls(**data)
 
 
-class PyableTest(eth_models.AutoEthable):
+class PyableTest(models.AutoEthable):
     """Test dataclass for the pyable utility function."""
 
-    hash32: eth_types.Hash32
-    address: eth_types.Address
-    checksumaddress: eth_types.ChecksumAddress
-    hexaddress: eth_types.HexAddress
-    anyaddress: eth_types.Address
-    hexstring: eth_types.HexStr
-    data: eth_types.Data
-    data_list: List[eth_types.Data]
-    blocknumber: eth_types.BlockNumber
-    blockid: eth_types.BlockIdentifier
+    hash32: types.Hash32
+    address: types.Address
+    checksumaddress: types.ChecksumAddress
+    hexaddress: types.HexAddress
+    anyaddress: types.Address
+    hexstring: types.HexStr
+    data: types.Data
+    data_list: list[types.Data]
+    blocknumber: types.BlockNumber
+    blockid: types.BlockIdentifier
     integer: int
 
 
@@ -156,7 +146,7 @@ class BenchConversionData:
             "anyaddress": to_bytes(None, self.result["anyaddress"]),
             "hexstring": to_text(None, self.result["hexstring"]),
             "data": to_text(None, self.result["data"]),
-            "data_list": list(map(lambda z: to_text(z), self.result["data_list"])),
+            "data_list": [to_text(z) for z in self.result["data_list"]],
             "blocknumber": to_int(None, self.result["blocknumber"]),
             "integer": to_int(None, self.result["integer"]),
             "blockid": to_int(None, self.result["blockid"]),
@@ -168,7 +158,7 @@ def bench_data():
     return BenchConversionData()
 
 
-def assert_keys_equal(obj: Union[PyableTest, PyableTestBench], exp: Dict):
+def assert_keys_equal(obj: PyableTest | PyableTestBench, exp: dict):
     # Test Pyable coversions properly converted.
     assert obj.hash32 == exp["hash32"]
     assert obj.address == exp["address"]
@@ -183,7 +173,7 @@ def assert_keys_equal(obj: Union[PyableTest, PyableTestBench], exp: Dict):
     assert obj.blockid == exp["blockid"]
 
 
-def assert_dict_equal(test: Dict, exp: Dict):
+def assert_dict_equal(test: dict, exp: dict):
     # Test Pyable coversions properly converted.
     assert test["hash32"] == exp["hash32"]
     assert test["address"] == exp["address"]
@@ -239,7 +229,7 @@ def test_transaction_dataclass():
         "gasPrice": hex(20000),
     }
 
-    transaction = eth_models.Transaction.parse_obj(transaction_data.copy())
+    transaction = models.Transaction.parse_obj(transaction_data.copy())
     eth_payload: dict = transaction.dict()
 
     assert "from" in eth_payload
@@ -282,10 +272,8 @@ async def test_sha3(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a sha3/Keccak-256 hash."""
     data_to_hash = "0x68656c6c6f20776f726c64"
     hashed = "0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad"
-    hashed_ret = await async_rpc.sha3(
-        eth_utils.to_py_converters[eth_types.Data](data_to_hash)
-    )
-    assert hashed == eth_utils.to_eth_converters[eth_types.Hash32](hashed_ret)
+    hashed_ret = await async_rpc.sha3(utils.to_py_converters[types.Data](data_to_hash))
+    assert hashed == utils.to_eth_converters[types.Hash32](hashed_ret)
 
 
 @pytest.mark.asyncio
@@ -293,9 +281,9 @@ async def test_network_version(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting the network version."""
     network_version = await async_rpc.network_version()
     assert (
-        network_version == eth_models.Network.Rinkeby
-        or network_version == eth_models.Network.Ganache
-        or network_version == eth_models.Network.Mainnet
+        network_version == models.Network.Rinkeby
+        or network_version == models.Network.Ganache
+        or network_version == models.Network.Mainnet
     )
 
 
@@ -334,7 +322,7 @@ async def test_coinbase(async_rpc: fasteth.AsyncEthereumJSONRPC):
     # We expect this to fail, as our test client does not have a coinbase address.
     try:
         await async_rpc.coinbase()
-    except exceptions.JSONRPCError:
+    except fasteth.exceptions.JSONRPCError:
         pass
 
 
@@ -416,7 +404,7 @@ async def test_get_block_transaction_count_by_number(
     assert isinstance(
         (
             await async_rpc.get_block_transaction_count_by_number(
-                block_identifier=eth_types.BlockNumber(0)
+                block_identifier=types.BlockNumber(0)
             )
         ),
         int,
@@ -467,7 +455,7 @@ async def test_sign(async_rpc: fasteth.AsyncEthereumJSONRPC):
 @pytest.mark.asyncio
 async def test_sign_transaction(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test signing a transaction and returning the signed transaction."""
-    transaction = eth_models.Transaction(from_address=storage_address, data=test_data)
+    transaction = models.Transaction(from_address=storage_address, data=test_data)  # type: ignore
     # We expect this to fail because it is unsupported on our test endpoint.
     try:
         await async_rpc.sign_transaction(transaction=transaction)
@@ -478,7 +466,7 @@ async def test_sign_transaction(async_rpc: fasteth.AsyncEthereumJSONRPC):
 @pytest.mark.asyncio
 async def test_send_transaction(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test signing a transaction and returning the signed transaction."""
-    transaction = eth_models.Transaction(from_address=storage_address, data=test_data)
+    transaction = models.Transaction(from_address=storage_address, data=test_data)  # type: ignore
     # We expect this to fail because it is unsupported on our test endpoint.
     try:
         await async_rpc.send_transaction(transaction=transaction)
@@ -491,7 +479,7 @@ async def test_send_raw_transaction(async_rpc: fasteth.AsyncEthereumJSONRPC):
     # TODO(Fix this test to use a real tx data that works on Rinkeby)
     try:
         await async_rpc.send_raw_transaction(
-            eth_types.HexStr(
+            types.HexStr(
                 "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8e"
                 "b970870f072445675"
             )
@@ -503,7 +491,7 @@ async def test_send_raw_transaction(async_rpc: fasteth.AsyncEthereumJSONRPC):
 @pytest.mark.asyncio
 async def test_call(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test call to a contract function without posting a transaction."""
-    transaction = eth_models.Transaction(from_address=storage_address, data=test_data)
+    transaction = models.Transaction(from_address=storage_address, data=test_data)  # type: ignore
     # TODO(Get working test data in place)
     try:
         await async_rpc.call(transaction=transaction, block_identifier=latest)
@@ -514,7 +502,7 @@ async def test_call(async_rpc: fasteth.AsyncEthereumJSONRPC):
 @pytest.mark.asyncio
 async def test_estimate_gas(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test call to a contract function without posting a transaction."""
-    transaction = eth_models.Transaction(from_address=storage_address, data=test_data)
+    transaction = models.Transaction(from_address=storage_address, data=test_data)  # type: ignore
     # TODO(Get working test data in place)
     try:
         await async_rpc.estimate_gas(
@@ -533,7 +521,7 @@ async def test_get_block_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
         ),
         True,
     )
-    assert isinstance(block, eth_models.FullBlock)
+    assert isinstance(block, models.FullBlock)
     assert block.number == 16397796
     assert block.baseFeePerGas == 14879286010
 
@@ -541,8 +529,8 @@ async def test_get_block_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
 @pytest.mark.asyncio
 async def test_get_block_by_number(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a block by number."""
-    block = await async_rpc.get_block_by_number(eth_types.BlockNumber(0), True)
-    assert isinstance(block, eth_models.BaseBlock)
+    block = await async_rpc.get_block_by_number(types.BlockNumber(0), True)
+    assert isinstance(block, models.BaseBlock)
 
 
 @pytest.mark.asyncio
@@ -567,7 +555,7 @@ async def test_shh_version(async_rpc: fasteth.AsyncEthereumJSONRPC):
 async def test_shh_post(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test sending a whisper message."""
     try:
-        whisper = eth_models.Message(
+        whisper = models.Message(
             from_address=storage_address,
             to=test_address,
             topics=test_topic_list,
@@ -669,7 +657,7 @@ async def test_get_transaction_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
     tx = await async_rpc.get_transaction_by_hash(
         "0x270c9f96972fa465d2e2efa1c68ea6117e48b3e5d21ce0dcce2f72bda9f2cbdb"
     )
-    assert isinstance(tx, eth_models.Transaction)
+    assert isinstance(tx, models.Transaction)
     assert tx.from_address == "0xd2090025857b9c7b24387741f120538e928a3a59"
     assert tx.to == "0x4675c7e5baafbffbca748158becba61ef3b0a263"
     # assert tx.blockHash == "0xec1ec1738c4b62b6c519c3e24b3030927317a42b17907dc94d96f947df1d2267"

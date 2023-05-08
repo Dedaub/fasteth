@@ -66,7 +66,7 @@ class ActionNotAllowed(EthereumRPCError):
 
 
 class ExecutionError(EthereumRPCError):
-    """Will contain a subset of custom errors in the data field. """
+    """Will contain a subset of custom errors in the data field."""
 
     pass
 

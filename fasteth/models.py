@@ -2,14 +2,13 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Any, ClassVar, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, ClassVar, TypeVar, cast
 
 from pydantic import BaseModel, Field
 
 from fasteth import exceptions as eth_exp
 from fasteth import types as eth_types
 from fasteth import utils
-from functools import reduce
 
 
 class Network(int, Enum):
@@ -73,7 +72,7 @@ class Ethable(ABC, BaseModel):
     """Abstract base class for classes presenting an explicit conversion for eth RPC"""
 
     @abstractmethod
-    def dict(self) -> Dict:
+    def dict(self) -> dict:
         """Returns a dict for submission in an RPC request.
 
         :returns
@@ -83,7 +82,7 @@ class Ethable(ABC, BaseModel):
 
     @staticmethod
     @abstractmethod
-    def parse_obj(data: Dict) -> Any:
+    def parse_obj(data: dict) -> Any:
         """Returns the data decoded to this type."""
         pass
 
@@ -94,7 +93,7 @@ FROM_KEY = "from_address"
 FROM = "from"
 
 
-def iterate_list(model_type: Type[T], data: List):
+def iterate_list(model_type: type[T], data: list):
     """Returns the elements of the data converted to model_type in a new list."""
     return [model_type.parse_obj(v) for v in data]
 
@@ -108,14 +107,14 @@ class AutoEthable(Ethable):
     Use with that in mind.
     """
 
-    def dict(self: Type[T], *args, **kwargs) -> Dict:
+    def dict(self, *args, **kwargs) -> dict:
         """Returns a dict for submission in an RPC request.
 
         :returns
             dict: The RPC request data.
         """
         # Dictionary for eth RPC Request JSON
-        r: Dict = {}
+        r: dict = {}
 
         annotations = dict(self.__annotations__.items())
         for an in [base.__annotations__.items() for base in self.__class__.__bases__]:
@@ -136,7 +135,7 @@ class AutoEthable(Ethable):
                 r[k] = utils.to_eth_converters[t](v)
             elif issubclass(type(t), Ethable):
                 r[k] = t.dict(v)
-            elif hasattr(t, "__args__") and t == List[t.__args__[0]]:  # type: ignore
+            elif hasattr(t, "__args__") and t == list[t.__args__[0]]:  # type: ignore
                 if t.__args__[0] in utils.to_eth_converters:
                     # Map the converter to each member of the list
                     r[k] = [utils.to_eth_converters[t.__args__[0]](x) for x in v]
@@ -149,7 +148,7 @@ class AutoEthable(Ethable):
         return r
 
     @classmethod
-    def parse_obj(cls: Type[T], data: Dict) -> T:
+    def parse_obj(cls: type[T], data: dict) -> T:
         """Returns python typed object from ethereum typed object.
 
         This will mutate data, so used data.copy() to avoid as needed.
@@ -178,7 +177,7 @@ class AutoEthable(Ethable):
                 data[k] = utils.to_py_converters[t](v)
             elif issubclass(type(t), Ethable):
                 data[k] = t.parse_obj(v)
-            elif hasattr(t, "__args__") and t == List[t.__args__[0]]:  # type: ignore
+            elif hasattr(t, "__args__") and t == list[t.__args__[0]]:  # type: ignore
                 # A list of non-Ethable types.
                 if t.__args__[0] in utils.to_py_converters:
                     # Map the converter to each member of the list
@@ -224,7 +223,7 @@ class JSONRPCRequest(BaseModel):
 
     jsonrpc: str = "2.0"
     method: str
-    params: List = Field(default_factory=list)
+    params: list = Field(default_factory=list)
     id: int
 
 
@@ -271,7 +270,7 @@ class JSONRPCErrorData(BaseModel):
 
     code: int
     message: str
-    data: Optional[Union[Dict, List, List[EthereumErrorData]]]
+    data: dict | list | list[EthereumErrorData] | None
     _exp: ClassVar = {
         -32700: eth_exp.ParseError,
         -32600: eth_exp.InvalidRequest,
@@ -293,9 +292,8 @@ class JSONRPCErrorData(BaseModel):
     def raise_for_error(self):
         if self.code in self._exp:
             if self.code == 3:
-                # TODO(Consider raising multiple exceptions here for each error
-                #  in the list of errors)
-                for elem in self.data:
+                # TODO: Consider raising multiple exceptions here for each error in the list of errors
+                for elem in cast(list[EthereumErrorData], self.data):
                     raise self._eth_error[elem.code](elem.message)
             else:
                 raise self._exp[self.code](self.message)
@@ -327,10 +325,10 @@ class JSONRPCResponse(BaseModel):
         # https://www.jsonrpc.org/specification
     """
 
-    id: Optional[int] = None
+    id: int | None = None
     jsonrpc: str = "2.0"
-    error: Optional[JSONRPCErrorData] = None
-    result: Optional[Union[Dict, List, eth_types.HexStr, bool]] = None
+    error: JSONRPCErrorData | None = None
+    result: dict | list | bool | eth_types.HexStr | None = None
 
 
 # noinspection PyUnresolvedReferences
@@ -343,9 +341,9 @@ class SyncStatus(AutoEthable):
         currentBlock (int): The current block for the sync in progress.
     """
 
-    startingBlock: Optional[int] = None
-    currentBlock: Optional[int] = None
-    highestBlock: Optional[int] = None
+    startingBlock: int | None = None
+    currentBlock: int | None = None
+    highestBlock: int | None = None
     syncing: bool = False
 
 
@@ -371,21 +369,21 @@ class Transaction(AutoEthable):
     """
 
     from_address: eth_types.HexAddress
-    data: Optional[eth_types.Data] = None
-    to: Optional[eth_types.HexAddress] = None
-    gas: Optional[int] = None
-    gasPrice: Optional[int] = None
-    value: Optional[int] = None
-    nonce: Optional[int] = None
-    hash: Optional[eth_types.Hash32] = None
-    input: Optional[bytes] = None
-    transactionIndex: Optional[int] = None
-    blockHash: Optional[eth_types.Hash32] = None
-    blockNumber: Optional[int] = None
-    type: Optional[int] = None  # This is not in the spec but exists in the return
-    v: Optional[int] = None
-    r: Optional[eth_types.Signature] = None
-    s: Optional[eth_types.Signature] = None
+    data: eth_types.Data | None = None
+    to: eth_types.HexAddress | None = None
+    gas: int | None = None
+    gasPrice: int | None = None
+    value: int | None = None
+    nonce: int | None = None
+    hash: eth_types.Hash32 | None = None
+    input: bytes | None = None
+    transactionIndex: int | None = None
+    blockHash: eth_types.Hash32 | None = None
+    blockNumber: int | None = None
+    type: int | None = None  # This is not in the spec but exists in the return
+    v: int | None = None
+    r: eth_types.Signature | None = None
+    s: eth_types.Signature | None = None
 
 
 class BaseBlock(AutoEthable):
@@ -424,10 +422,10 @@ class BaseBlock(AutoEthable):
         uncles (List[eth_types.Hash32]): List of uncle hashes.
     """
 
-    logsBloom: Optional[eth_types.LogsBloom] = None
-    number: Optional[int] = None
-    hash: Optional[eth_types.Hash32] = None
-    nonce: Optional[int] = None
+    logsBloom: eth_types.LogsBloom | None = None
+    number: int | None = None
+    hash: eth_types.Hash32 | None = None
+    nonce: int | None = None
     parentHash: eth_types.Hash32
     sha3Uncles: eth_types.Hash32
     mixHash: eth_types.Hash32
@@ -442,16 +440,16 @@ class BaseBlock(AutoEthable):
     gasLimit: int
     gasUsed: int
     timestamp: datetime
-    uncles: List[eth_types.Hash32]
-    baseFeePerGas: Optional[int] = None
+    uncles: list[eth_types.Hash32]
+    baseFeePerGas: int | None = None
 
 
 class FullBlock(BaseBlock):
-    transactions: List[Transaction] = Field(default_factory=list)
+    transactions: list[Transaction] = Field(default_factory=list)
 
 
 class PartialBlock(BaseBlock):
-    transactions: List[eth_types.Hash32] = Field(default_factory=list)
+    transactions: list[eth_types.Hash32] = Field(default_factory=list)
 
 
 class WhisperFilter(AutoEthable):
@@ -495,9 +493,9 @@ class Message(AutoEthable):
     payload: eth_types.Data
     ttl: int
     priority: int = 1
-    from_address: Optional[eth_types.HexAddress] = None
-    to: Optional[eth_types.HexAddress] = None
-    workProved: Optional[int] = None
-    sent: Optional[int] = None
-    expiry: Optional[int] = None
-    message_hash: Optional[eth_types.Hash32] = None
+    from_address: eth_types.HexAddress | None = None
+    to: eth_types.HexAddress | None = None
+    workProved: int | None = None
+    sent: int | None = None
+    expiry: int | None = None
+    message_hash: eth_types.Hash32 | None = None
