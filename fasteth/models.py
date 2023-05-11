@@ -1,17 +1,21 @@
 """Dataclasses for fasteth data types."""
-from abc import ABC, abstractmethod
-from datetime import datetime
 from enum import Enum
 from typing import Any, ClassVar, TypeVar, cast
 
 from pydantic import BaseModel, Field
 
 from fasteth import exceptions as eth_exp
-from fasteth import types as eth_types
-from fasteth import utils
+from fasteth.types import (
+    Bytes,
+    ETHAddress,
+    ETHBlockIdentifier,
+    ETHDatetime,
+    ETHWord,
+    Uint256,
+)
 
 
-class Network(int, Enum):
+class Network(Uint256, Enum):
     """An enum representing the ethereum network id."""
 
     Mainnet = 1
@@ -43,6 +47,7 @@ class RPCSchema(tuple, Enum):
     get_transaction_count = ("eth_getTransactionCount", 1)
     get_block_by_number = ("eth_getBlockByNumber", 1)
     get_block_by_hash = ("eth_getBlockByHash", 1)
+    get_block_receipts = ("eth_getBlockReceipts", 1)
     get_block_transaction_count_by_hash = ("eth_getBlockTransactionCountByHash", 1)
     get_block_transaction_count_by_number = ("eth_getBlockTransactionCountByNumber", 1)
     get_transaction_by_hash = ("eth_getTransactionByHash", 1)
@@ -68,127 +73,9 @@ class RPCSchema(tuple, Enum):
     shh_uninstall_filter = ("shh_uninstallFilter", 73)
 
 
-class Ethable(ABC, BaseModel):
-    """Abstract base class for classes presenting an explicit conversion for eth RPC"""
-
-    @abstractmethod
-    def dict(self) -> dict:
-        """Returns a dict for submission in an RPC request.
-
-        :returns
-            dict: The RPC request data.
-        """
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def parse_obj(data: dict) -> Any:
-        """Returns the data decoded to this type."""
-        pass
-
-
-# Create a generic variable that can be 'AutoEthable', or any subclass.
-T = TypeVar("T", bound=Ethable)
-FROM_KEY = "from_address"
-FROM = "from"
-
-
-def iterate_list(model_type: type[T], data: list):
-    """Returns the elements of the data converted to model_type in a new list."""
-    return [model_type.parse_obj(v) for v in data]
-
-
-class AutoEthable(Ethable):
-    """Provides encode and decode functionality without explicit conversion.
-
-    Using AutoEthable vs declaring explicit dict and parse_obj methods incurs
-    a 30% overhead overall, and a ~2x overhead in the inter-quartile range.
-
-    Use with that in mind.
-    """
-
-    def dict(self, *args, **kwargs) -> dict:
-        """Returns a dict for submission in an RPC request.
-
-        :returns
-            dict: The RPC request data.
-        """
-        # Dictionary for eth RPC Request JSON
-        r: dict = {}
-
-        annotations = dict(self.__annotations__.items())
-        for an in [base.__annotations__.items() for base in self.__class__.__bases__]:
-            annotations.update(an)
-
-        for k, t in annotations.items():
-            v = getattr(self, k)
-            # Workaround python built-in
-            if v is None:
-                continue
-
-            if k == FROM_KEY:
-                r[FROM] = v
-                k = FROM
-
-            if t in utils.to_eth_converters:
-                # Check if this is a simple type with a converter.
-                r[k] = utils.to_eth_converters[t](v)
-            elif issubclass(type(t), Ethable):
-                r[k] = t.dict(v)
-            elif hasattr(t, "__args__") and t == list[t.__args__[0]]:  # type: ignore
-                if t.__args__[0] in utils.to_eth_converters:
-                    # Map the converter to each member of the list
-                    r[k] = [utils.to_eth_converters[t.__args__[0]](x) for x in v]
-                elif issubclass(t.__args__[0], Ethable):
-                    # This is an ethable type, recurse encoder.
-                    r[k] = [t.__args__[0].dict(x) for x in v]
-            else:
-                r[k] = v
-
-        return r
-
-    @classmethod
-    def parse_obj(cls: type[T], data: dict) -> T:
-        """Returns python typed object from ethereum typed object.
-
-        This will mutate data, so used data.copy() to avoid as needed.
-        TODO(consider making this input not mutate, it's bug prone)
-
-        :type data: dict
-        :param data: The dictionary of data to populate the dataclass with.
-        """
-        if FROM in data:
-            data[FROM_KEY] = data.pop(FROM)
-
-        annotations = dict(cls.__annotations__.items())
-        for an in [base.__annotations__.items() for base in cls.__bases__]:
-            annotations.update(an)
-
-        for k, t in annotations.items():
-            # We only need to access the value once.
-            v = data.get(k)
-
-            if v is None:
-                # Then this is either an optional or non-existent value in input.
-                continue
-
-            if t in utils.to_py_converters:
-                # Check if the type has an eth encoder, encode if so.
-                data[k] = utils.to_py_converters[t](v)
-            elif issubclass(type(t), Ethable):
-                data[k] = t.parse_obj(v)
-            elif hasattr(t, "__args__") and t == list[t.__args__[0]]:  # type: ignore
-                # A list of non-Ethable types.
-                if t.__args__[0] in utils.to_py_converters:
-                    # Map the converter to each member of the list
-                    data[k] = [utils.to_py_converters[t.__args__[0]](x) for x in v]
-                elif issubclass(t.__args__[0], Ethable):
-                    # This is an ethable type, recurse decoder.
-                    data[k] = [t.__args__[0].parse_obj(x) for x in v]
-            else:
-                data[k] = v
-
-        return cls(**data)
+class AutoEthable(BaseModel):
+    class Config:
+        json_encoders = {bytes: lambda x: f"0x{x.hex()}"}
 
 
 # noinspection PyUnresolvedReferences
@@ -200,7 +87,7 @@ class JSONRPCRequest(BaseModel):
                  MUST be exactly "2.0".
         method: A String containing the name of the method to be invoked. Method names
                 that begin with the word rpc followed by a period character
-                (U+002E or ASCII 46) are reserved for rpc-internal methods and
+                (U+002E or ASCII 46) are reserved for rpc-Uint256ernal methods and
                 extensions and MUST NOT be used for anything else.
         params: A Structured value that holds the parameter values to be used during
                 the invocation of the method. This member MAY be omitted.
@@ -224,12 +111,15 @@ class JSONRPCRequest(BaseModel):
     jsonrpc: str = "2.0"
     method: str
     params: list = Field(default_factory=list)
-    id: int
+    id: Uint256
+
+    class Config:
+        json_encoders = {bytes: lambda x: f"0x{x.hex()}", Uint256: hex}
 
 
 class EthereumErrorData(BaseModel):
-    # TODO(Break out handling logic here.)
-    code: int
+    # TODO: Break out handling logic here
+    code: Uint256
     message: str
 
 
@@ -239,7 +129,7 @@ class JSONRPCErrorData(BaseModel):
 
     Attributes:
         code: A Number that indicates the error type that occurred.
-              This MUST be an integer.
+              This MUST be an Uint256eger.
         message: A String providing a short description of the error.
                  The message SHOULD be limited to a concise single sentence.
         data: A Primitive or Structured value that contains additional information
@@ -268,9 +158,9 @@ class JSONRPCErrorData(BaseModel):
     The remainder of the space is available for application defined errors.
     """
 
-    code: int
+    code: Uint256
     message: str
-    data: dict | list | list[EthereumErrorData] | None
+    data: dict | list | list[EthereumErrorData] | Bytes | None
     _exp: ClassVar = {
         -32700: eth_exp.ParseError,
         -32600: eth_exp.InvalidRequest,
@@ -304,7 +194,9 @@ class JSONRPCErrorData(BaseModel):
             raise eth_exp.JSONRPCError
 
 
-# noinspection PyUnresolvedReferences
+T = TypeVar("T")
+
+
 class JSONRPCResponse(BaseModel):
     """Model for JSON RPC response.
 
@@ -325,123 +217,90 @@ class JSONRPCResponse(BaseModel):
         # https://www.jsonrpc.org/specification
     """
 
-    id: int | None = None
+    id: Uint256 | None = None
     jsonrpc: str = "2.0"
     error: JSONRPCErrorData | None = None
-    result: dict | list | bool | eth_types.HexStr | None = None
+    result: dict | list | bool | Any | None = None
 
 
-# noinspection PyUnresolvedReferences
 class SyncStatus(AutoEthable):
-    """Model representing node sync status.
-
-    Attributes:
-        startingBlock (int): The starting block for the sync in progress.
-        currentBlock (int): The current block for the sync in progress.
-        currentBlock (int): The current block for the sync in progress.
-    """
-
-    startingBlock: int | None = None
-    currentBlock: int | None = None
-    highestBlock: int | None = None
-    syncing: bool = False
+    startingBlock: Uint256
+    currentBlock: Uint256
+    highestBlock: Uint256
 
 
-# noinspection PyUnresolvedReferences
-class Transaction(AutoEthable):
-    """The transaction object.
+class CallParams(AutoEthable):
+    from_address: ETHAddress | None = Field(None, alias="from")
+    to: ETHAddress | None = None
+    gas: Uint256 | None = None
+    gasPrice: Uint256 | None = None
+    value: Uint256 | None = None
+    data: Bytes | None = None
+    blockNumber: ETHBlockIdentifier | None = None
 
-    Attributes:
-        from_address (eth_types.Address): The address the transaction is sent from. This
-                                          is sent to the RPC as 'from'.
-        to (eth_types.Address): (optional when creating new contract) The address the
-                                transaction is directed to.
-        gas (int): Integer of the gas provided for the transaction. It will return
-                   unused gas.
-        gasPrice (int): Integer of the gasPrice used for each paid gas, in Wei.
-        value (int): Integer of the value sent with this transaction, in Wei.
-        data (eth_types.Data): The compiled code of a contract OR the hash of the
-                               invoked method signature and encoded parameters. See
-                               the Ethereum Contract ABI specification for more detail.
-        nonce (int): This allows to overwrite your own pending transactions that use
-                     the same nonce.
 
-    """
+class Transaction(CallParams):
+    nonce: Uint256
+    hash: ETHWord
+    input: bytes
+    transactionIndex: Uint256
+    blockHash: ETHWord
+    type: Uint256
+    v: Uint256
+    r: ETHWord
+    s: ETHWord
 
-    from_address: eth_types.HexAddress
-    data: eth_types.Data | None = None
-    to: eth_types.HexAddress | None = None
-    gas: int | None = None
-    gasPrice: int | None = None
-    value: int | None = None
-    nonce: int | None = None
-    hash: eth_types.Hash32 | None = None
-    input: bytes | None = None
-    transactionIndex: int | None = None
-    blockHash: eth_types.Hash32 | None = None
-    blockNumber: int | None = None
-    type: int | None = None  # This is not in the spec but exists in the return
-    v: int | None = None
-    r: eth_types.Signature | None = None
-    s: eth_types.Signature | None = None
+
+class Log(AutoEthable):
+    address: ETHAddress
+    topics: list[ETHWord]
+    data: Bytes
+    blockNumber: Uint256
+    transactionHash: ETHWord
+    transactionIndex: Uint256
+    blockHash: ETHWord
+    logIndex: Uint256
+    removed: bool
+
+
+class TransactionReceipt(AutoEthable):
+    blockHash: ETHWord
+    blockNumber: Uint256
+    contractAddress: ETHAddress | None
+    cumulativeGasUsed: Uint256
+    effectiveGasPrice: Uint256
+    from_address: ETHAddress = Field(..., alias="from")
+    gasUsed: Uint256
+    logs: list[Log]
+    logsBloom: Bytes
+    status: Uint256
+    to: ETHAddress | None
+    transactionHash: ETHWord
+    transactionIndex: Uint256
+    type: Uint256
 
 
 class BaseBlock(AutoEthable):
-    # noinspection PyUnresolvedReferences
-    """The block object.
-
-    Attributes:
-        number (int): The block number. None when its pending block.
-        hash (Union[eth_types.Hash32, None]): 32 Bytes - hash of the block.
-                                              None when its pending block.
-        parentHash (eth_types.Hash32): 32 Bytes - hash of the parent block.
-        nonce (Union[eth_types.Data, None]): 8 Bytes - hash of the generated
-                                             proof-of-work. None when its pending block.
-        sha3Uncles (eth_types.Hash32): 32 Bytes - SHA3 of the uncles data in the
-                                     block.
-        logsBloom (eth_types.LogsBloom): 256 Bytes - the bloom filter for the logs
-                                         of the block. null when its pending block.
-        transactionsRoot (eth_types.Hash32): 32 Bytes - the root of the transaction
-                                             trie of the block.
-        stateRoot (eth_types.Hash32): 32 Bytes - the root of the final state trie
-                                      of the block.
-        receiptsRoot (eth_types.Hash32): 32 Bytes - the root of the receipts trie of
-                                         the block.
-        miner (eth_types.Address): 20 Bytes - the address of the beneficiary to
-                                   whom the mining rewards were given.
-        difficulty (int): The difficulty for this block.
-        totalDifficulty (int): The total difficulty of the chain until this block.
-        extraData (eth_types.Data): The “extra data” field of this block.
-        size (int): The size of this block in bytes.
-        gasLimit (int): The maximum gas allowed in this block.
-        gasUsed (int): The total used gas by all transactions in this block.
-        timestamp (Arrow): Time for when the block was collated.
-        transactions (List[Union[Transaction, eth_types.Hash32]): List of transaction
-            objects, or 32 Bytes transaction hashes depending on the last given
-            parameter.
-        uncles (List[eth_types.Hash32]): List of uncle hashes.
-    """
-
-    logsBloom: eth_types.LogsBloom | None = None
-    number: int | None = None
-    hash: eth_types.Hash32 | None = None
-    nonce: int | None = None
-    parentHash: eth_types.Hash32
-    sha3Uncles: eth_types.Hash32
-    mixHash: eth_types.Hash32
-    transactionsRoot: eth_types.Hash32
-    stateRoot: eth_types.Hash32
-    receiptsRoot: eth_types.Hash32
-    miner: eth_types.Address
-    difficulty: int
-    totalDifficulty: int
+    logsBloom: Bytes | None = None
+    number: Uint256 | None = None
+    hash: ETHWord | None = None
+    nonce: Uint256 | None = None
+    parentHash: ETHWord
+    sha3Uncles: ETHWord
+    mixHash: ETHWord
+    transactionsRoot: ETHWord
+    stateRoot: ETHWord
+    receiptsRoot: ETHWord
+    miner: ETHAddress
+    difficulty: Uint256
+    totalDifficulty: Uint256
     extraData: str
-    size: int
-    gasLimit: int
-    gasUsed: int
-    timestamp: datetime
-    uncles: list[eth_types.Hash32]
-    baseFeePerGas: int | None = None
+    size: Uint256
+    gasLimit: Uint256
+    gasUsed: Uint256
+    timestamp: ETHDatetime
+    uncles: list[ETHWord]
+    baseFeePerGas: Uint256 | None = None
 
 
 class FullBlock(BaseBlock):
@@ -449,7 +308,7 @@ class FullBlock(BaseBlock):
 
 
 class PartialBlock(BaseBlock):
-    transactions: list[eth_types.Hash32] = Field(default_factory=list)
+    transactions: list[ETHWord] = Field(default_factory=list)
 
 
 class WhisperFilter(AutoEthable):
@@ -458,10 +317,10 @@ class WhisperFilter(AutoEthable):
     matching the filter options.
 
     Attributes:
-        to (eth_types.Address): Identity of the receiver. When
+        to (ETHAddress): Identity of the receiver. When
             present it will try to decrypt any incoming message if the
             client holds the private key to this identity.
-        topics (list[eth_types.Data]): Array of DATA topics which the incoming
+        topics (list[ETHWord]): Array of DATA topics which the incoming
                 message’s topics should match. You can use the following
                 combinations:
                     [A, B] = A && B
@@ -469,8 +328,8 @@ class WhisperFilter(AutoEthable):
                     [null, A, B] = ANYTHING && A && B null works as a wildcard
     """
 
-    to: eth_types.HexAddress
-    topics: list[eth_types.Data]
+    to: ETHAddress
+    topics: list[ETHWord]
 
 
 class Message(AutoEthable):
@@ -478,24 +337,24 @@ class Message(AutoEthable):
     """Whisper Message.
 
     Attributes:
-        hash (eth_types.Data): The hash of the message.
-        from (eth_types.Address): The sender of the message, if specified.
-        to (eth_types.Address): The receiver of the message, if specified.
-        expiry (int): Time in seconds when this message should expire.
-        ttl (int): Time the message should float in the system in seconds.
-        sent (int): The unix timestamp when the message was sent.
-        topics (list[eth_types.Data]): Topics the message contained.
-        payload (eth_types.Data): The payload of the message.
-        workProved (int): The work this message required before it was send.
+        hash (ETHWord): The hash of the message.
+        from (ETHAddress): The sender of the message, if specified.
+        to (ETHAddress): The receiver of the message, if specified.
+        expiry (Uint256): Time in seconds when this message should expire.
+        ttl (Uint256): Time the message should float in the system in seconds.
+        sent (Uint256): The unix timestamp when the message was sent.
+        topics (list[ETHWord]): Topics the message contained.
+        payload (ETHWord): The payload of the message.
+        workProved (Uint256): The work this message required before it was send.
     """
 
-    topics: list[eth_types.Data]
-    payload: eth_types.Data
-    ttl: int
-    priority: int = 1
-    from_address: eth_types.HexAddress | None = None
-    to: eth_types.HexAddress | None = None
-    workProved: int | None = None
-    sent: int | None = None
-    expiry: int | None = None
-    message_hash: eth_types.Hash32 | None = None
+    topics: list[ETHWord]
+    payload: ETHWord
+    ttl: Uint256
+    priority: Uint256 = 1
+    from_address: ETHAddress | None = None
+    to: ETHAddress | None = None
+    workProved: Uint256 | None = None
+    sent: Uint256 | None = None
+    expiry: Uint256 | None = None
+    message_hash: ETHWord | None = None
