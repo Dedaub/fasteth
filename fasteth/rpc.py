@@ -38,7 +38,6 @@ class AsyncJSONRPCCore(httpx.AsyncClient):
         # We want to raise here http errors.
         response.raise_for_status()
         # Now we get back the JSON and do error handling.
-        print(response.content)
         rpc_response = models.JSONRPCResponse.parse_raw(response.content)
         if rpc_response.error:
             rpc_response.error.raise_for_error()
