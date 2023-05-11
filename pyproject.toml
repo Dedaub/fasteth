@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "fasteth"
-version = "0.1.0"
+version = "1.0.0"
 description = "A lightweight, python native, async interface for the Ethereum JSON RPC."
-authors = ["0xAlcibiades <info@dontemail.com>"]
+authors = ["Tony Valentine <tvalentine@dedaub.com>", "0xAlcibiades <info@dontemail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
