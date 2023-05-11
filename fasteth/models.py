@@ -2,6 +2,7 @@
 from enum import Enum
 from typing import Any, ClassVar, TypeVar, cast
 
+import orjson
 from pydantic import BaseModel, Field
 
 from fasteth import exceptions as eth_exp
@@ -73,8 +74,22 @@ class RPCSchema(tuple, Enum):
     shh_uninstall_filter = ("shh_uninstallFilter", 73)
 
 
+def orjson_dumps(v, *, default):
+    # orjson.dumps returns bytes, to match standard json.dumps we need to decode
+    return orjson.dumps(v, default=default).decode()
+
+
 class AutoEthable(BaseModel):
     class Config:
+        # https://docs.pydantic.dev/latest/usage/exporting_models/#custom-json-deserialisation
+        # NOTE: that orjson takes care of datetime encoding natively,
+        # making it faster than json.dumps but meaning you cannot
+        # always customise the encoding using Config.json_encoders.
+        #
+        # Idk if this is still the case with the ETHDatetime
+
+        json_loads = orjson.loads
+        json_dumps = orjson_dumps
         json_encoders = {bytes: lambda x: f"0x{x.hex()}"}
 
 
