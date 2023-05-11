@@ -335,7 +335,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                     id=self.rpc_schema.get_storage_at[1],
                     params=[
                         address,
-                        position,
+                        to_hex(position),
                         block_identifier,
                     ],
                 )
