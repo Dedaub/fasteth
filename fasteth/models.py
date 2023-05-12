@@ -255,9 +255,11 @@ class CallParams(AutoEthable):
 
 
 class Transaction(CallParams):
+    maxFeePerGas: Uint256 | None = None
+    maxPriorityFeePerGas: Uint256 | None = None
     nonce: Uint256
     hash: ETHWord
-    input: bytes
+    input: Bytes
     transactionIndex: Uint256
     blockHash: ETHWord
     type: Uint256
