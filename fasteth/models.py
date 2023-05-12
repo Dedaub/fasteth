@@ -309,7 +309,7 @@ class BaseBlock(AutoEthable):
     miner: ETHAddress
     difficulty: Uint256
     totalDifficulty: Uint256
-    extraData: str
+    extraData: Bytes
     size: Uint256
     gasLimit: Uint256
     gasUsed: Uint256
