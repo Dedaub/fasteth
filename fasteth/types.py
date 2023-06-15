@@ -73,11 +73,13 @@ class ETHDatetime(datetime):
 
     @classmethod
     def validate(cls, val: Any):
-        if val.startswith("0x"):
-            return cls.fromtimestamp(int(val, base=16))
+        if isinstance(val, (datetime, ETHDatetime)):
+            return cls.fromtimestamp(val.timestamp())
         elif isinstance(val, (int, float)):
             return cls.fromtimestamp(val)
         elif isinstance(val, str):
+            if val.startswith("0x"):
+                return cls.fromtimestamp(int(val, base=16))
             return cls.fromisoformat(val)
         else:
             raise ValueError("Unknown format")
