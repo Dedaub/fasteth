@@ -52,6 +52,7 @@ class RPCSchema(tuple, Enum):
     get_block_transaction_count_by_hash = ("eth_getBlockTransactionCountByHash", 1)
     get_block_transaction_count_by_number = ("eth_getBlockTransactionCountByNumber", 1)
     get_transaction_by_hash = ("eth_getTransactionByHash", 1)
+    get_logs = ("eth_getLogs", 1)
     get_uncle_count_by_block_hash = ("eth_getUncleCountByBlockHash", 1)
     get_uncle_count_by_block_number = ("eth_getUncleCountByBlockNumber", 1)
     get_shh_messages = ("shh_getMessages", 73)
@@ -129,7 +130,10 @@ class JSONRPCRequest(BaseModel):
     id: Uint256
 
     class Config:
-        json_encoders = {bytes: lambda x: f"0x{x.hex()}", Uint256: hex}
+        json_encoders = {
+            bytes: lambda x: f"0x{x.hex()}",
+            Uint256: hex,
+        }
 
 
 class EthereumErrorData(BaseModel):
@@ -278,6 +282,14 @@ class Log(AutoEthable):
     blockHash: ETHWord
     logIndex: Uint256
     removed: bool
+
+
+class LogsFilter(BaseModel):
+    fromBlock: ETHBlockIdentifier | None = None
+    toBlock: ETHBlockIdentifier | None = None
+    address: ETHAddress | list[ETHAddress]
+    topics: list[ETHWord] | None = None
+    blockHash: ETHWord | None = None
 
 
 class TransactionReceipt(AutoEthable):
