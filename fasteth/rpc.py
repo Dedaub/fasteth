@@ -15,7 +15,7 @@ json_headers = {"Content-Type": "application/json"}
 class AsyncJSONRPCCore(httpx.AsyncClient):
     """Asynchronous remote procedure call client."""
 
-    def __init__(self, rpc_uri: str = localhost, http2: bool = False):
+    def __init__(self, rpc_uri: str = localhost, timeout: int = 5, http2: bool = False):
         """Initialize JSON RPC.
 
         :param rpc_uri: RPC URI for ethereum client.
@@ -23,6 +23,7 @@ class AsyncJSONRPCCore(httpx.AsyncClient):
         """
         super().__init__(http2=http2)
         self.rpc_uri = rpc_uri
+        self.timeout = timeout
 
     async def rpc(self, rpc_request: models.JSONRPCRequest) -> Any:
         """Return JSONRPCResponse for the JSONRPCRequest, executing a RPC.
@@ -34,6 +35,7 @@ class AsyncJSONRPCCore(httpx.AsyncClient):
             url=self.rpc_uri,
             headers=json_headers,
             content=rpc_request.json(),
+            timeout=self.timeout,
         )
         # We want to raise here http errors.
         response.raise_for_status()
