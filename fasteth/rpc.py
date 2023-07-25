@@ -659,11 +659,12 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 params=[block_id, full],
             )
         )
-        return (
-            models.FullBlock.parse_obj(data)
-            if full
-            else models.PartialBlock.parse_obj(data)
-        )
+
+        if data is None:
+            return None
+
+        model = models.FullBlock if full else models.PartialBlock
+        return model.parse_obj(data)
 
     async def get_block_by_number(
         self, block_id: types.ETHBlockIdentifier, full: bool
@@ -690,11 +691,11 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             )
         )
 
-        return (
-            models.FullBlock.parse_obj(data)
-            if full
-            else models.PartialBlock.parse_obj(data)
-        )
+        if data is None:
+            return None
+
+        model = models.FullBlock if full else models.PartialBlock
+        return model.parse_obj(data)
 
     async def get_block_receipts(
         self, block_id: types.ETHBlockIdentifier
