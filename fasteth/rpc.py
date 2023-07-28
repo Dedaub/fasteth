@@ -15,13 +15,18 @@ json_headers = {"Content-Type": "application/json"}
 class AsyncJSONRPCCore(httpx.AsyncClient):
     """Asynchronous remote procedure call client."""
 
-    def __init__(self, rpc_uri: str = localhost, http2: bool = False):
+    def __init__(
+        self,
+        rpc_uri: str = localhost,
+        http2: bool = False,
+        **kwargs,
+    ):
         """Initialize JSON RPC.
 
         :param rpc_uri: RPC URI for ethereum client.
         :param http2: Boolean to use http2 when true.
         """
-        super().__init__(http2=http2)
+        super().__init__(http2=http2, **kwargs)
         self.rpc_uri = rpc_uri
 
     async def rpc(self, rpc_request: models.JSONRPCRequest) -> Any:
