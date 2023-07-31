@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 import httpx
 from eth_utils.conversions import to_hex, to_int
@@ -15,7 +15,12 @@ json_headers = {"Content-Type": "application/json"}
 class AsyncJSONRPCCore(httpx.AsyncClient):
     """Asynchronous remote procedure call client."""
 
-    def __init__(self, rpc_uri: str = localhost, timeout: int = 5, http2: bool = False):
+    def __init__(
+        self,
+        rpc_uri: str = localhost,
+        timeout: Union[int, None] = 5,
+        http2: bool = False,
+    ):
         """Initialize JSON RPC.
 
         :param rpc_uri: RPC URI for ethereum client.
@@ -321,7 +326,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             params=[dict_request],
         )
 
-        return await self.rpc(request)
+        return [models.Log.validate(log) for log in await self.rpc(request)]
 
     async def get_balance(
         self,
