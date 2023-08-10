@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 
 import httpx
 from eth_utils.conversions import to_hex, to_int
@@ -18,17 +18,16 @@ class AsyncJSONRPCCore(httpx.AsyncClient):
     def __init__(
         self,
         rpc_uri: str = localhost,
-        timeout: Union[int, None] = 5,
         http2: bool = False,
+        **kwargs,
     ):
         """Initialize JSON RPC.
 
         :param rpc_uri: RPC URI for ethereum client.
         :param http2: Boolean to use http2 when true.
         """
-        super().__init__(http2=http2)
+        super().__init__(http2=http2, **kwargs)
         self.rpc_uri = rpc_uri
-        self.timeout = timeout
 
     async def rpc(self, rpc_request: models.JSONRPCRequest) -> Any:
         """Return JSONRPCResponse for the JSONRPCRequest, executing a RPC.
@@ -40,7 +39,6 @@ class AsyncJSONRPCCore(httpx.AsyncClient):
             url=self.rpc_uri,
             headers=json_headers,
             content=rpc_request.json(),
-            timeout=self.timeout,
         )
         # We want to raise here http errors.
         response.raise_for_status()
@@ -709,11 +707,12 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 params=[block_id, full],
             )
         )
-        return (
-            models.FullBlock.parse_obj(data)
-            if full
-            else models.PartialBlock.parse_obj(data)
-        )
+
+        if data is None:
+            return None
+
+        model = models.FullBlock if full else models.PartialBlock
+        return model.parse_obj(data)
 
     async def get_block_by_number(
         self, block_id: types.ETHBlockIdentifier, full: bool
@@ -740,11 +739,11 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             )
         )
 
-        return (
-            models.FullBlock.parse_obj(data)
-            if full
-            else models.PartialBlock.parse_obj(data)
-        )
+        if data is None:
+            return None
+
+        model = models.FullBlock if full else models.PartialBlock
+        return model.parse_obj(data)
 
     async def get_block_receipts(
         self, block_id: types.ETHBlockIdentifier
