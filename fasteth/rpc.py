@@ -283,6 +283,49 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             )
         )
 
+    async def get_logs(self, logs_request: models.LogsFilter) -> list[models.Log]:
+        """Returns an array of all logs matching a given filter object.
+
+        Calls eth_getLogs.
+
+        :param object: a filter object which contains
+        the following fields ->
+            :param fromBlock: a types.ETHBlockIdentifier to
+            specify where to start checking.
+            :param toBlock: a types.ETHBlockIdentifier to
+            specify where to end checking.
+            :param address: The contract address or a list
+            of addresses from which logs should originate from.
+            :param topics: a list[types.ETHWord] to check event
+            topics against.
+            :param blockHash: an types.ETHBlockIdentifier of
+            the block to check in.
+
+        :returns
+            list[models.Log]: A list of logs which sastisfy the filter object.
+        """
+        dict_request = logs_request.dict(exclude_none=True)
+
+        dict_request["fromBlock"] = (
+            hex(dict_request["fromBlock"])
+            if isinstance(dict_request["fromBlock"], types.Uint256)
+            else dict_request["fromBlock"]
+        )
+
+        dict_request["toBlock"] = (
+            hex(dict_request["toBlock"])
+            if isinstance(dict_request["toBlock"], types.Uint256)
+            else dict_request["toBlock"]
+        )
+
+        request = models.JSONRPCRequest(
+            method=self.rpc_schema.get_logs[0],
+            id=self.rpc_schema.get_logs[1],
+            params=[dict_request],
+        )
+
+        return [models.Log.validate(log) for log in await self.rpc(request)]
+
     async def get_balance(
         self,
         address: types.ETHAddress,
