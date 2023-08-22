@@ -735,7 +735,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             models.JSONRPCRequest(
                 method=self.rpc_schema.get_block_by_number[0],
                 id=self.rpc_schema.get_block_by_number[1],
-                params=[block_id, full],
+                params=[block_id if isinstance(block_id, str) else hex(block_id), full],
             )
         )
 
