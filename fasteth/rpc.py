@@ -793,6 +793,29 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         )
         return models.Transaction.parse_obj(data)
 
+    async def get_transaction_receipt(
+        self,
+        tx_hash: types.ETHWord,
+    ) -> models.TransactionReceipt | None:
+        """Returns the receipt of a transaction.
+
+        Calls the eth_getTransactionReceipt
+
+        :param tx_hash: types.ETHWord of a transaction.
+
+
+        :returns
+            models.TransactionReceipt: A Receipt object, or None when no tx found.
+        """
+        data = await self.rpc(
+            models.JSONRPCRequest(
+                method=self.rpc_schema.get_transaction_receipt[0],
+                id=self.rpc_schema.get_transaction_receipt[1],
+                params=[tx_hash],
+            )
+        )
+        return models.TransactionReceipt.parse_obj(data)
+
     async def submit_hashrate(
         self,
         hashrate: types.Bytes,

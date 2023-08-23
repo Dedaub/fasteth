@@ -366,6 +366,29 @@ async def test_get_transaction_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
     assert blockByHash.number == tx.blockNumber
 
 
+@pytest.mark.asyncio
+async def test_get_transaction_receipt(async_rpc: fasteth.AsyncEthereumJSONRPC):
+    """Test getting a tx by hash."""
+    tx = await async_rpc.get_transaction_receipt(
+        types.ETHWord.validate(
+            "0x270c9f96972fa465d2e2efa1c68ea6117e48b3e5d21ce0dcce2f72bda9f2cbdb"
+        )
+    )
+    assert isinstance(tx, models.TransactionReceipt)
+    assert tx.from_address == types.ETHAddress.validate(
+        "0xd2090025857b9c7b24387741f120538e928a3a59"
+    )
+    assert tx.to == types.ETHAddress.validate(
+        "0x4675c7e5baafbffbca748158becba61ef3b0a263"
+    )
+    # assert tx.blockHash == "0xec1ec1738c4b62b6c519c3e24b3030927317a42b17907dc94d96f947df1d2267"
+    blockByHash = await async_rpc.get_block_by_hash(tx.blockHash, full=False)
+
+    assert blockByHash is not None
+
+    assert blockByHash.number == tx.blockNumber
+
+
 if __name__ == "__main__":
     """For running directly via CLI."""
     import sys

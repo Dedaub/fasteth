@@ -52,6 +52,7 @@ class RPCSchema(tuple, Enum):
     get_block_transaction_count_by_hash = ("eth_getBlockTransactionCountByHash", 1)
     get_block_transaction_count_by_number = ("eth_getBlockTransactionCountByNumber", 1)
     get_transaction_by_hash = ("eth_getTransactionByHash", 1)
+    get_transaction_receipt = ("eth_getTransactionReceipt", 1)
     get_logs = ("eth_getLogs", 1)
     get_uncle_count_by_block_hash = ("eth_getUncleCountByBlockHash", 1)
     get_uncle_count_by_block_number = ("eth_getUncleCountByBlockNumber", 1)
