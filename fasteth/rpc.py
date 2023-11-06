@@ -512,7 +512,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         self,
         address: types.ETHAddress,
         block_identifier: types.ETHBlockIdentifier = default_block_id,
-    ) -> types.Bytes:
+    ) -> types.HexBytes:
         """Return code at a given address during specified block.
 
         :param address: The address to retrieve the code from.
@@ -521,7 +521,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             types.Bytes: string in hex format containing the code as data.
         """
-        return types.Bytes.validate(
+        return types.HexBytes.validate(
             await self.rpc(
                 models.JSONRPCRequest(
                     method=self.rpc_schema.get_code[0],

@@ -234,7 +234,7 @@ async def test_get_uncle_count_by_block_number(
 async def test_get_code(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting code from a given address at a given block."""
     storage_contents = await async_rpc.get_code(storage_address)
-    assert isinstance(storage_contents, types.Bytes)
+    assert isinstance(storage_contents, types.HexBytes)
 
 
 @pytest.mark.asyncio

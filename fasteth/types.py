@@ -47,6 +47,16 @@ class Bytes(bytes):
         return cls(coalesce_bytes(val, enable_b64=True))
 
 
+class HexBytes(bytes):
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable[[Any], bytes], None, None]:
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, val: Any):
+        return cls(coalesce_bytes(val))
+
+
 class Uint256(int):
     @classmethod
     def __get_validators__(cls) -> Generator[Callable[[Any], int], None, None]:
