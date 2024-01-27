@@ -75,7 +75,7 @@ class RPCSchema(tuple, Enum):
 
 
 class AutoEthable(BaseModel):
-     model_config = ConfigDict(json_encoders={bytes: lambda x: f"0x{x.hex()}"})
+    model_config = ConfigDict(json_encoders={bytes: lambda x: f"0x{x.hex()}"})
 
 
 class EthereumErrorData(BaseModel):
@@ -198,6 +198,7 @@ class CallParams(AutoEthable):
     value: Uint256 | None = None
     data: Bytes | None = None
     blockNumber: ETHBlockIdentifier | None = None
+    model_config = ConfigDict(json_encoders={bytes: lambda x: f"0x{x.hex()}"})
 
 
 class Transaction(CallParams):
@@ -212,6 +213,7 @@ class Transaction(CallParams):
     v: Uint256
     r: ETHWord
     s: ETHWord
+    model_config = ConfigDict(json_encoders={bytes: lambda x: f"0x{x.hex()}"})
 
 
 class Log(AutoEthable):
@@ -363,7 +365,7 @@ class JSONRPCRequest(BaseModel):
 
     jsonrpc: str = "2.0"
     method: str
-    params: list[Union[str, bool, Uint256, Bytes, ETHWord, CallParams, Transaction, Message, WhisperFilter, LogsFilter]] = Field(default_factory=list)
+    params: list[Union[str, bool, Transaction, CallParams, Message, WhisperFilter, LogsFilter, Uint256, Bytes, ETHWord,]] = Field(default_factory=list)
     id: Uint256
     model_config = ConfigDict(json_encoders={
         bytes: lambda x: f"0x{x.hex()}",

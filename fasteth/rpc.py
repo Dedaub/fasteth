@@ -582,7 +582,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             models.JSONRPCRequest(
                 method=self.rpc_schema.sign_transaction[0],
                 id=self.rpc_schema.sign_transaction[1],
-                params=[transaction.model_dump_json()],
+                params=[transaction],
             )
         )
 
@@ -601,7 +601,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 models.JSONRPCRequest(
                     method=self.rpc_schema.send_transaction[0],
                     id=self.rpc_schema.send_transaction[1],
-                    params=[transaction.model_dump_json()],
+                    params=[transaction],
                 )
             )
         )
@@ -647,7 +647,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 models.JSONRPCRequest(
                     method=self.rpc_schema.call[0],
                     id=self.rpc_schema.call[1],
-                    params=[transaction.model_dump_json(), block_identifier],
+                    params=[transaction, block_identifier],
                 )
             )
         )
@@ -678,7 +678,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 models.JSONRPCRequest(
                     method=self.rpc_schema.estimate_gas[0],
                     id=self.rpc_schema.estimate_gas[1],
-                    params=[transaction.model_dump_json(), block_identifier],
+                    params=[transaction, block_identifier],
                 )
             )
         )
