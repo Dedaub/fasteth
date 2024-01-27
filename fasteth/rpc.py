@@ -38,12 +38,12 @@ class AsyncJSONRPCCore(httpx.AsyncClient):
         response = await self.post(
             url=self.rpc_uri,
             headers=json_headers,
-            content=rpc_request.json(),
+            content=rpc_request.model_dump_json(),
         )
         # We want to raise here http errors.
         response.raise_for_status()
         # Now we get back the JSON and do error handling.
-        rpc_response = models.JSONRPCResponse.parse_raw(response.content)
+        rpc_response = models.JSONRPCResponse.model_validate_json(response.content)
         if rpc_response.error:
             rpc_response.error.raise_for_error()
         return rpc_response.result
@@ -184,7 +184,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         if isinstance(result, bool):
             return result
         else:
-            return models.SyncStatus.parse_obj(result)
+            return models.SyncStatus.model_validate(result)
 
     async def coinbase(self) -> types.ETHAddress:
         """Returns the client coinbase address
@@ -304,27 +304,27 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             list[models.Log]: A list of logs which sastisfy the filter object.
         """
-        dict_request = logs_request.dict(exclude_none=True)
+      #  dict_request = logs_request.model_dump(exclude_none=True)
 
-        dict_request["fromBlock"] = (
-            hex(dict_request["fromBlock"])
-            if isinstance(dict_request["fromBlock"], types.Uint256)
-            else dict_request["fromBlock"]
+        logs_request["fromBlock"] = (
+            hex(logs_request["fromBlock"])
+            if isinstance(logs_request["fromBlock"], types.Uint256)
+            else logs_request["fromBlock"]
         )
 
-        dict_request["toBlock"] = (
-            hex(dict_request["toBlock"])
-            if isinstance(dict_request["toBlock"], types.Uint256)
-            else dict_request["toBlock"]
+        logs_request["toBlock"] = (
+            hex(logs_request["toBlock"])
+            if isinstance(logs_request["toBlock"], types.Uint256)
+            else logs_request["toBlock"]
         )
 
         request = models.JSONRPCRequest(
             method=self.rpc_schema.get_logs[0],
             id=self.rpc_schema.get_logs[1],
-            params=[dict_request],
+            params=[logs_request],
         )
 
-        return [models.Log.validate(log) for log in await self.rpc(request)]
+        return [models.Log.model_validate(log) for log in await self.rpc(request)]
 
     async def get_balance(
         self,
@@ -479,7 +479,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 models.JSONRPCRequest(
                     method=self.rpc_schema.get_uncle_count_by_block_hash[0],
                     id=self.rpc_schema.get_uncle_count_by_block_hash[1],
-                    params=[(block_hash)],
+                    params=[block_hash],
                 )
             )
         )
@@ -582,7 +582,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             models.JSONRPCRequest(
                 method=self.rpc_schema.sign_transaction[0],
                 id=self.rpc_schema.sign_transaction[1],
-                params=[transaction.dict(exclude_none=True)],
+                params=[transaction.model_dump_json()],
             )
         )
 
@@ -601,7 +601,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 models.JSONRPCRequest(
                     method=self.rpc_schema.send_transaction[0],
                     id=self.rpc_schema.send_transaction[1],
-                    params=[transaction.dict(exclude_none=True)],
+                    params=[transaction.model_dump_json()],
                 )
             )
         )
@@ -647,7 +647,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 models.JSONRPCRequest(
                     method=self.rpc_schema.call[0],
                     id=self.rpc_schema.call[1],
-                    params=[transaction.dict(exclude_none=True), block_identifier],
+                    params=[transaction.model_dump_json(), block_identifier],
                 )
             )
         )
@@ -678,7 +678,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 models.JSONRPCRequest(
                     method=self.rpc_schema.estimate_gas[0],
                     id=self.rpc_schema.estimate_gas[1],
-                    params=[transaction.dict(exclude_none=True), block_identifier],
+                    params=[transaction.model_dump_json(), block_identifier],
                 )
             )
         )
@@ -712,7 +712,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             return None
 
         model = models.FullBlock if full else models.PartialBlock
-        return model.parse_obj(data)
+        return model.model_validate(data)
 
     async def get_block_by_number(
         self, block_id: types.ETHBlockIdentifier, full: bool
@@ -743,7 +743,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             return None
 
         model = models.FullBlock if full else models.PartialBlock
-        return model.parse_obj(data)
+        return model.model_validate(data)
 
     async def get_block_receipts(
         self, block_id: types.ETHBlockIdentifier
@@ -768,7 +768,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 params=[block_id],
             )
         )
-        return list(map(models.TransactionReceipt.parse_obj, data))
+        return list(map(models.TransactionReceipt.model_validate, data))
 
     async def get_transaction_by_hash(
         self,
@@ -791,7 +791,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 params=[tx_hash],
             )
         )
-        return models.Transaction.parse_obj(data)
+        return models.Transaction.model_validate(data)
 
     async def get_transaction_receipt(
         self,
@@ -814,7 +814,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 params=[tx_hash],
             )
         )
-        return models.TransactionReceipt.parse_obj(data)
+        return models.TransactionReceipt.model_validate(data)
 
     async def submit_hashrate(
         self,
@@ -868,7 +868,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
             models.JSONRPCRequest(
                 method=self.rpc_schema.shh_post[0],
                 id=self.rpc_schema.shh_post[1],
-                params=[whisper.dict()],
+                params=[whisper],
             )
         )
 
@@ -959,7 +959,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 models.JSONRPCRequest(
                     method=self.rpc_schema.shh_new_filter[0],
                     id=self.rpc_schema.shh_new_filter[1],
-                    params=[whisper_filter.dict()],
+                    params=[whisper_filter],
                 )
             )
         )
@@ -1006,7 +1006,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
                 params=[to_hex(identifier)],
             )
         )
-        return list(map(models.Message.parse_obj, result))
+        return list(map(models.Message.model_validate, result))
 
     async def get_shh_messages(self, identifier: int) -> list[models.Message] | bool:
         """Get all messages matching a filter. Unlike shh_getFilterChanges
@@ -1031,4 +1031,4 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         if isinstance(result, bool):
             return result
 
-        return list(map(models.Message.parse_obj, result))
+        return list(map(models.Message.model_validate, result))

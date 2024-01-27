@@ -1,16 +1,28 @@
 from datetime import datetime
-from typing import Any, Callable, Generator, Literal
+from typing import Any, Literal
 
 from eth_typing.enums import ForkName  # noqa: F401
 from eth_typing.evm import BlockIdentifier  # noqa: F401
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import CoreSchema, core_schema
 
 from fasteth.utils import coalesce_bytes
 
 
 class ETHWord(bytes):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[[Any], bytes], None, None]:
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+
+        return core_schema.chain_schema(
+            [
+                core_schema.no_info_plain_validator_function(
+                    function=cls.validate,
+                )
+
+            ]
+        )
 
     @classmethod
     def validate(cls, val: Any):
@@ -19,8 +31,18 @@ class ETHWord(bytes):
 
 class ETHAddress(bytes):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[[Any], bytes], None, None]:
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+
+        return core_schema.chain_schema(
+            [
+                core_schema.no_info_plain_validator_function(
+                    function=cls.validate,
+                )
+
+            ]
+        )
 
     @classmethod
     def validate(cls, val: Any):
@@ -29,8 +51,18 @@ class ETHAddress(bytes):
 
 class MD5Hash(bytes):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[[Any], bytes], None, None]:
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+
+        return core_schema.chain_schema(
+            [
+                core_schema.no_info_plain_validator_function(
+                    function=cls.validate,
+                )
+
+            ]
+        )
 
     @classmethod
     def validate(cls, val: Any):
@@ -39,8 +71,17 @@ class MD5Hash(bytes):
 
 class Bytes(bytes):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[[Any], bytes], None, None]:
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+        return core_schema.chain_schema(
+            [
+                core_schema.no_info_plain_validator_function(
+                    function=cls.validate,
+                )
+
+            ]
+        )
 
     @classmethod
     def validate(cls, val: Any):
@@ -49,8 +90,18 @@ class Bytes(bytes):
 
 class HexBytes(bytes):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[[Any], bytes], None, None]:
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+
+        return core_schema.chain_schema(
+            [
+                core_schema.no_info_plain_validator_function(
+                    function=cls.validate,
+                )
+
+            ]
+        )
 
     @classmethod
     def validate(cls, val: Any):
@@ -59,8 +110,18 @@ class HexBytes(bytes):
 
 class Uint256(int):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[[Any], int], None, None]:
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+
+        return core_schema.chain_schema(
+            [
+                core_schema.no_info_plain_validator_function(
+                    function=cls.validate,
+                )
+
+            ]
+        )
 
     @classmethod
     def validate(cls, val: Any):
@@ -78,8 +139,18 @@ class Uint256(int):
 
 class ETHDatetime(datetime):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[[Any], datetime], None, None]:
-        yield cls.validate
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+
+        return core_schema.chain_schema(
+            [
+                core_schema.no_info_plain_validator_function(
+                    function=cls.validate,
+                )
+
+            ]
+        )
 
     @classmethod
     def validate(cls, val: Any):
