@@ -1,7 +1,7 @@
 """Dataclasses for fasteth data types."""
 from enum import Enum
 from typing import Any, ClassVar, TypeVar, cast, Union
-from pydantic import ConfigDict, BaseModel, Field, field_serializer, TypeAdapter
+from pydantic import ConfigDict, BaseModel, Field
 
 from fasteth import exceptions as eth_exp
 from fasteth.types import (
