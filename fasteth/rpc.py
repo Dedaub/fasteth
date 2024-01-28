@@ -306,16 +306,16 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         """
       #  dict_request = logs_request.model_dump(exclude_none=True)
 
-        logs_request["fromBlock"] = (
-            hex(logs_request["fromBlock"])
-            if isinstance(logs_request["fromBlock"], types.Uint256)
-            else logs_request["fromBlock"]
+        logs_request.fromBlock = (
+            hex(logs_request.fromBlock)
+            if isinstance(logs_request.fromBlock, types.Uint256)
+            else logs_request.fromBlock
         )
 
-        logs_request["toBlock"] = (
-            hex(logs_request["toBlock"])
-            if isinstance(logs_request["toBlock"], types.Uint256)
-            else logs_request["toBlock"]
+        logs_request.toBlock = (
+            hex(logs_request.toBlock)
+            if isinstance(logs_request.toBlock, types.Uint256)
+            else logs_request.toBlock
         )
 
         request = models.JSONRPCRequest(

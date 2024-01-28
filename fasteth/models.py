@@ -10,7 +10,7 @@ from fasteth.types import (
     ETHBlockIdentifier,
     ETHDatetime,
     ETHWord,
-    Uint256
+    Uint256,
 )
 
 
@@ -198,7 +198,6 @@ class CallParams(AutoEthable):
     value: Uint256 | None = None
     data: Bytes | None = None
     blockNumber: ETHBlockIdentifier | None = None
-    model_config = ConfigDict(json_encoders={bytes: lambda x: f"0x{x.hex()}"})
 
 
 class Transaction(CallParams):
@@ -213,7 +212,6 @@ class Transaction(CallParams):
     v: Uint256
     r: ETHWord
     s: ETHWord
-    model_config = ConfigDict(json_encoders={bytes: lambda x: f"0x{x.hex()}"})
 
 
 class Log(AutoEthable):
@@ -228,7 +226,7 @@ class Log(AutoEthable):
     removed: bool
 
 
-class LogsFilter(BaseModel):
+class LogsFilter(AutoEthable):
     fromBlock: ETHBlockIdentifier | None = None
     toBlock: ETHBlockIdentifier | None = None
     address: ETHAddress | list[ETHAddress]
