@@ -6,6 +6,7 @@ import pytest
 import fasteth
 import fasteth.exceptions
 from fasteth import models, types
+from fasteth.models import LogsFilter
 
 # TODO(add more rigorous testing and parametrized testing)
 # These are all "golden path" tests, if you will.
@@ -319,6 +320,16 @@ async def test_get_block_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
     assert isinstance(block, models.FullBlock)
     assert block.number == 16397796
     assert block.baseFeePerGas == 14879286010
+
+
+@pytest.mark.asyncio
+async def test_get_logs(async_rpc: fasteth.AsyncEthereumJSONRPC):
+    logs_request = LogsFilter(address=test_address)
+    """Test get_logs serialization."""
+    models_log = await async_rpc.get_logs(
+        logs_request=logs_request
+    )
+    assert len(models_log) == 0, "Expected empty log list"
 
 
 @pytest.mark.asyncio

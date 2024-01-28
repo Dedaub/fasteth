@@ -38,7 +38,7 @@ class AsyncJSONRPCCore(httpx.AsyncClient):
         response = await self.post(
             url=self.rpc_uri,
             headers=json_headers,
-            content=rpc_request.model_dump_json(),
+            content=rpc_request.model_dump_json(exclude_none=True),
         )
         # We want to raise here http errors.
         response.raise_for_status()
@@ -304,7 +304,6 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :returns
             list[models.Log]: A list of logs which sastisfy the filter object.
         """
-      #  dict_request = logs_request.model_dump(exclude_none=True)
 
         logs_request.fromBlock = (
             hex(logs_request.fromBlock)
@@ -861,7 +860,7 @@ class AsyncEthereumJSONRPC(AsyncJSONRPCCore):
         :param whisper: The whisper post object.
 
         :returns
-            bool: Returns true if the message was send, otherwise false.
+            bool: Returns true if the message was sent, otherwise false.
         """
 
         return await self.rpc(

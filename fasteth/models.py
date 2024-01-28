@@ -316,7 +316,7 @@ class Message(AutoEthable):
         sent (Uint256): The unix timestamp when the message was sent.
         topics (list[ETHWord]): Topics the message contained.
         payload (ETHWord): The payload of the message.
-        workProved (Uint256): The work this message required before it was send.
+        workProved (Uint256): The work this message required before it was sent.
     """
 
     topics: list[ETHWord]
