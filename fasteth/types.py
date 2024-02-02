@@ -1,169 +1,51 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Annotated
 
 from eth_typing.enums import ForkName  # noqa: F401
 from eth_typing.evm import BlockIdentifier  # noqa: F401
-from pydantic import GetCoreSchemaHandler
-from pydantic_core import CoreSchema, core_schema
+from pydantic import PlainValidator
 
 from fasteth.utils import coalesce_bytes
 
+from functools import partial
 
-class ETHWord(bytes):
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> CoreSchema:
-
-        return core_schema.chain_schema(
-            [
-                core_schema.no_info_plain_validator_function(
-                    function=cls.validate,
-                )
-
-            ]
-        )
-
-    @classmethod
-    def validate(cls, val: Any):
-        return cls(coalesce_bytes(val, length=32))
+ETHWord = Annotated[bytes, PlainValidator(partial(coalesce_bytes, length=32))]
+ETHAddress = Annotated[bytes, PlainValidator(partial(coalesce_bytes, length=20))]
+MD5Hash = Annotated[bytes, PlainValidator(partial(coalesce_bytes, length=16))]
+Bytes = Annotated[bytes, PlainValidator(partial(coalesce_bytes, enable_b64=True))]
+HexBytes = Annotated[bytes, PlainValidator(coalesce_bytes)]
 
 
-class ETHAddress(bytes):
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> CoreSchema:
-
-        return core_schema.chain_schema(
-            [
-                core_schema.no_info_plain_validator_function(
-                    function=cls.validate,
-                )
-
-            ]
-        )
-
-    @classmethod
-    def validate(cls, val: Any):
-        return cls(coalesce_bytes(val, length=20))
+def uint256_validate(val: Any):
+    data: int
+    if isinstance(val, (bytearray, memoryview, bytes)):
+        data = int.from_bytes(val, byteorder="big", signed=False)
+    elif isinstance(val, int):
+        data = val
+    elif isinstance(val, str):
+        data = int(val, base=16 if val.startswith("0x") else 10)
+    else:
+        raise TypeError("Value cannot be coerced into an integer")
+    return data
 
 
-class MD5Hash(bytes):
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> CoreSchema:
-
-        return core_schema.chain_schema(
-            [
-                core_schema.no_info_plain_validator_function(
-                    function=cls.validate,
-                )
-
-            ]
-        )
-
-    @classmethod
-    def validate(cls, val: Any):
-        return cls(coalesce_bytes(val, length=16))
+Uint256 = Annotated[int, PlainValidator(uint256_validate)]
 
 
-class Bytes(bytes):
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> CoreSchema:
-        return core_schema.chain_schema(
-            [
-                core_schema.no_info_plain_validator_function(
-                    function=cls.validate,
-                )
-
-            ]
-        )
-
-    @classmethod
-    def validate(cls, val: Any):
-        return cls(coalesce_bytes(val, enable_b64=True))
+def timedate_validate(val: Any):
+    if isinstance(val, datetime):
+        return datetime.fromtimestamp(val.timestamp())
+    elif isinstance(val, (int, float)):
+        return datetime.fromtimestamp(val)
+    elif isinstance(val, str):
+        if val.startswith("0x"):
+            return datetime.fromtimestamp(int(val, base=16))
+        return datetime.fromisoformat(val)
+    else:
+        raise ValueError("Unknown format")
 
 
-class HexBytes(bytes):
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> CoreSchema:
-
-        return core_schema.chain_schema(
-            [
-                core_schema.no_info_plain_validator_function(
-                    function=cls.validate,
-                )
-
-            ]
-        )
-
-    @classmethod
-    def validate(cls, val: Any):
-        return cls(coalesce_bytes(val))
-
-
-class Uint256(int):
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> CoreSchema:
-
-        return core_schema.chain_schema(
-            [
-                core_schema.no_info_plain_validator_function(
-                    function=cls.validate,
-                )
-
-            ]
-        )
-
-    @classmethod
-    def validate(cls, val: Any):
-        data: int
-        if isinstance(val, (bytearray, memoryview, bytes)):
-            data = int.from_bytes(val, byteorder="big", signed=False)
-        elif isinstance(val, int):
-            data = val
-        elif isinstance(val, str):
-            data = int(val, base=16 if val.startswith("0x") else 10)
-        else:
-            raise TypeError("Value cannot be coerced into an integer")
-        return cls(data)
-
-
-class ETHDatetime(datetime):
-    @classmethod
-    def __get_pydantic_core_schema__(
-        cls, source_type: Any, handler: GetCoreSchemaHandler
-    ) -> CoreSchema:
-
-        return core_schema.chain_schema(
-            [
-                core_schema.no_info_plain_validator_function(
-                    function=cls.validate,
-                )
-
-            ]
-        )
-
-    @classmethod
-    def validate(cls, val: Any):
-        if isinstance(val, (datetime, ETHDatetime)):
-            return cls.fromtimestamp(val.timestamp())
-        elif isinstance(val, (int, float)):
-            return cls.fromtimestamp(val)
-        elif isinstance(val, str):
-            if val.startswith("0x"):
-                return cls.fromtimestamp(int(val, base=16))
-            return cls.fromisoformat(val)
-        else:
-            raise ValueError("Unknown format")
+ETHDatetime = Annotated[datetime,PlainValidator(timedate_validate)]
 
 
 ETHBlockIdentifier = Literal["latest", "earliest", "pending"] | Uint256
