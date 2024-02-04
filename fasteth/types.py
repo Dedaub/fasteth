@@ -3,17 +3,17 @@ from typing import Any, Literal, Annotated
 
 from eth_typing.enums import ForkName  # noqa: F401
 from eth_typing.evm import BlockIdentifier  # noqa: F401
-from pydantic import PlainValidator, BeforeValidator
+from pydantic import PlainValidator
 
 from fasteth.utils import coalesce_bytes
 
 from functools import partial
 
-ETHWord = Annotated[bytes, BeforeValidator(partial(coalesce_bytes, length=32))]
-ETHAddress = Annotated[bytes, BeforeValidator(partial(coalesce_bytes, length=20))]
-MD5Hash = Annotated[bytes, BeforeValidator(partial(coalesce_bytes, length=16))]
-Bytes = Annotated[bytes, BeforeValidator(partial(coalesce_bytes, enable_b64=True))]
-HexBytes = Annotated[bytes, BeforeValidator(coalesce_bytes)]
+ETHWord = Annotated[bytes, PlainValidator(partial(coalesce_bytes, length=32))]
+ETHAddress = Annotated[bytes, PlainValidator(partial(coalesce_bytes, length=20))]
+MD5Hash = Annotated[bytes, PlainValidator(partial(coalesce_bytes, length=16))]
+Bytes = Annotated[bytes, PlainValidator(partial(coalesce_bytes, enable_b64=True))]
+HexBytes = Annotated[bytes, PlainValidator(coalesce_bytes)]
 
 
 def uint256_validate(val: Any):
