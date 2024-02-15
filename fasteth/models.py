@@ -1,9 +1,7 @@
 """Dataclasses for fasteth data types."""
 from enum import Enum
-from typing import Any, ClassVar, TypeVar, cast
-
-import orjson
-from pydantic import BaseModel, Field
+from typing import Any, ClassVar, TypeVar, cast, Union
+from pydantic import ConfigDict, BaseModel, Field
 
 from fasteth import exceptions as eth_exp
 from fasteth.types import (
@@ -76,65 +74,8 @@ class RPCSchema(tuple, Enum):
     shh_uninstall_filter = ("shh_uninstallFilter", 73)
 
 
-def orjson_dumps(v, *, default):
-    # orjson.dumps returns bytes, to match standard json.dumps we need to decode
-    return orjson.dumps(v, default=default).decode()
-
-
 class AutoEthable(BaseModel):
-    class Config:
-        # https://docs.pydantic.dev/latest/usage/exporting_models/#custom-json-deserialisation
-        # NOTE: that orjson takes care of datetime encoding natively,
-        # making it faster than json.dumps but meaning you cannot
-        # always customise the encoding using Config.json_encoders.
-        #
-        # Idk if this is still the case with the ETHDatetime
-
-        json_loads = orjson.loads
-        json_dumps = orjson_dumps
-        json_encoders = {bytes: lambda x: f"0x{x.hex()}"}
-
-
-# noinspection PyUnresolvedReferences
-class JSONRPCRequest(BaseModel):
-    """Model for JSON RPC Request.
-
-    Attributes:
-        jsonrpc: A String specifying the version of the JSON-RPC protocol.
-                 MUST be exactly "2.0".
-        method: A String containing the name of the method to be invoked. Method names
-                that begin with the word rpc followed by a period character
-                (U+002E or ASCII 46) are reserved for rpc-Uint256ernal methods and
-                extensions and MUST NOT be used for anything else.
-        params: A Structured value that holds the parameter values to be used during
-                the invocation of the method. This member MAY be omitted.
-        id: An identifier established by the Client that MUST contain a String, Number,
-            or None value if included. If it is not included it is assumed to be a
-            notification. The value SHOULD normally not be None and Numbers
-            SHOULD NOT contain fractional parts.
-
-    The Server MUST reply with the same value in the Response object if included.
-    This member is used to correlate the context between the two objects.
-
-    The use of None as a value for the id member in a Request object is discouraged,
-    because this specification uses a value of None for Responses with an unknown id.
-    Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could
-    cause confusion in handling.
-
-    Fractional parts may be problematic, since many decimal fractions cannot be
-    represented exactly as binary fractions.
-    """
-
-    jsonrpc: str = "2.0"
-    method: str
-    params: list = Field(default_factory=list)
-    id: Uint256
-
-    class Config:
-        json_encoders = {
-            bytes: lambda x: f"0x{x.hex()}",
-            Uint256: hex,
-        }
+    model_config = ConfigDict(json_encoders={bytes: lambda x: f"0x{x.hex()}"})
 
 
 class EthereumErrorData(BaseModel):
@@ -180,7 +121,7 @@ class JSONRPCErrorData(BaseModel):
 
     code: Uint256
     message: str
-    data: dict | list | list[EthereumErrorData] | Bytes | None
+    data: dict | list | list[EthereumErrorData] | Bytes | None = None
     _exp: ClassVar = {
         -32700: eth_exp.ParseError,
         -32600: eth_exp.InvalidRequest,
@@ -285,7 +226,7 @@ class Log(AutoEthable):
     removed: bool
 
 
-class LogsFilter(BaseModel):
+class LogsFilter(AutoEthable):
     fromBlock: ETHBlockIdentifier | None = None
     toBlock: ETHBlockIdentifier | None = None
     address: ETHAddress | list[ETHAddress]
@@ -296,7 +237,7 @@ class LogsFilter(BaseModel):
 class TransactionReceipt(AutoEthable):
     blockHash: ETHWord
     blockNumber: Uint256
-    contractAddress: ETHAddress | None
+    contractAddress: ETHAddress | None = None
     cumulativeGasUsed: Uint256
     effectiveGasPrice: Uint256
     from_address: ETHAddress = Field(..., alias="from")
@@ -304,7 +245,7 @@ class TransactionReceipt(AutoEthable):
     logs: list[Log]
     logsBloom: Bytes
     status: Uint256
-    to: ETHAddress | None
+    to: ETHAddress | None = None
     transactionHash: ETHWord
     transactionIndex: Uint256
     type: Uint256
@@ -375,7 +316,7 @@ class Message(AutoEthable):
         sent (Uint256): The unix timestamp when the message was sent.
         topics (list[ETHWord]): Topics the message contained.
         payload (ETHWord): The payload of the message.
-        workProved (Uint256): The work this message required before it was send.
+        workProved (Uint256): The work this message required before it was sent.
     """
 
     topics: list[ETHWord]
@@ -388,3 +329,43 @@ class Message(AutoEthable):
     sent: Uint256 | None = None
     expiry: Uint256 | None = None
     message_hash: ETHWord | None = None
+
+
+# noinspection PyUnresolvedReferences
+class JSONRPCRequest(BaseModel):
+    """Model for JSON RPC Request.
+
+    Attributes:
+        jsonrpc: A String specifying the version of the JSON-RPC protocol.
+                 MUST be exactly "2.0".
+        method: A String containing the name of the method to be invoked. Method names
+                that begin with the word rpc followed by a period character
+                (U+002E or ASCII 46) are reserved for rpc-Uint256ernal methods and
+                extensions and MUST NOT be used for anything else.
+        params: A Structured value that holds the parameter values to be used during
+                the invocation of the method. This member MAY be omitted.
+        id: An identifier established by the Client that MUST contain a String, Number,
+            or None value if included. If it is not included it is assumed to be a
+            notification. The value SHOULD normally not be None and Numbers
+            SHOULD NOT contain fractional parts.
+
+    The Server MUST reply with the same value in the Response object if included.
+    This member is used to correlate the context between the two objects.
+
+    The use of None as a value for the id member in a Request object is discouraged,
+    because this specification uses a value of None for Responses with an unknown id.
+    Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could
+    cause confusion in handling.
+
+    Fractional parts may be problematic, since many decimal fractions cannot be
+    represented exactly as binary fractions.
+    """
+
+    jsonrpc: str = "2.0"
+    method: str
+    params: list[Union[str, bool, Transaction, CallParams, Message, WhisperFilter, LogsFilter, Uint256, Bytes, ETHWord,]] = Field(default_factory=list)
+    id: Uint256
+    model_config = ConfigDict(json_encoders={
+        bytes: lambda x: f"0x{x.hex()}",
+        Uint256: hex,
+    })

@@ -2,39 +2,41 @@ import asyncio
 import re
 
 import pytest
+from pydantic import TypeAdapter
 
 import fasteth
 import fasteth.exceptions
 from fasteth import models, types
+from fasteth.models import LogsFilter
 
 # TODO(add more rigorous testing and parametrized testing)
 # These are all "golden path" tests, if you will.
 
-test_address = types.ETHAddress.validate("0x36273803306a3C22bc848f8Db761e974697ece0d")
+test_address = TypeAdapter(types.ETHAddress).validate_python("0x36273803306a3C22bc848f8Db761e974697ece0d")
 test_any_address = "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
-storage_address = types.ETHAddress.validate(
+storage_address = TypeAdapter(types.ETHAddress).validate_python(
     "0xdbF03B407c01E7cD3CBea99509d93f8DDDC8C6FB"
 )
 
-test_data = types.Bytes.validate("0x00")
+test_data = TypeAdapter(types.Bytes).validate_python("0x00")
 zero_block = test_data
-zero_block_hash = types.ETHWord.validate(zero_block)
+zero_block_hash = TypeAdapter(types.ETHWord).validate_python(zero_block)
 whisper_client = "2"
 
 infura_client = r"Geth\/v[0-9]+\.[0-9]+\.[0-9]+.+"
 ganache_client = (
     r"Ganache\/v\d+\.\d+\.\d+\/EthereumJS TestRPC\/v\d+\.\d+\.\d+\/ethereum-js"
 )
-test_block_hash = types.ETHWord.validate(
+test_block_hash = TypeAdapter(types.ETHWord).validate_python(
     "0xba6c9192229ef4fc8615b510abd2c602f3805b1e51ff8892fb0964e1988ba1e2"
 )
-test_hashrate_rate = types.Bytes.validate(
+test_hashrate_rate = TypeAdapter(types.Bytes).validate_python(
     "0x0000000000000000000000000000000000000000000000000000000000500000"
 )
-test_hashrate_id = types.Bytes.validate(
+test_hashrate_id = TypeAdapter(types.Bytes).validate_python(
     "0x59daa26581d0acd1fce254fb7e85952f4c09d0915afd33d3886cd914bc7d283c"
 )
-test_block_num = types.Uint256.validate("0x7c5b7a")
+test_block_num = TypeAdapter(types.Uint256).validate_python("0x7c5b7a")
 latest = "latest"
 
 
@@ -73,7 +75,7 @@ async def test_client_version(async_rpc: fasteth.AsyncEthereumJSONRPC):
 async def test_sha3(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a sha3/Keccak-256 hash."""
     data_to_hash = types.Bytes(b"hello world")
-    hashed = types.ETHWord.validate(
+    hashed = TypeAdapter(types.ETHWord).validate_python(
         "0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad"
     )
     hashed_ret = await async_rpc.sha3(data_to_hash)
@@ -187,7 +189,7 @@ async def test_get_block_transaction_count_by_hash(
     """Test getting the block transaction count by hash."""
     assert isinstance(
         (await async_rpc.get_block_transaction_count_by_hash(zero_block_hash)),
-        types.Uint256,
+        int,
     )
 
 
@@ -199,7 +201,7 @@ async def test_get_block_transaction_count_by_number(
     assert isinstance(
         (
             await async_rpc.get_block_transaction_count_by_number(
-                block_identifier=types.Uint256.validate(0)
+                block_identifier=TypeAdapter(types.Uint256).validate_python(0)
             )
         ),
         int,
@@ -234,7 +236,7 @@ async def test_get_uncle_count_by_block_number(
 async def test_get_code(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting code from a given address at a given block."""
     storage_contents = await async_rpc.get_code(storage_address)
-    assert isinstance(storage_contents, types.HexBytes)
+    assert isinstance(storage_contents, bytes)
 
 
 @pytest.mark.asyncio
@@ -274,7 +276,7 @@ async def test_send_raw_transaction(async_rpc: fasteth.AsyncEthereumJSONRPC):
     # TODO(Fix this test to use a real tx data that works on Rinkeby)
     try:
         await async_rpc.send_raw_transaction(
-            types.Bytes.validate(
+            TypeAdapter(types.Bytes).validate_python(
                 "0xd46e8dd67c5d32be8d46e8dd67c5d32be8058bb8eb970870f072445675058bb8e"
                 "b970870f072445675"
             )
@@ -311,7 +313,7 @@ async def test_estimate_gas(async_rpc: fasteth.AsyncEthereumJSONRPC):
 async def test_get_block_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a block by number."""
     block = await async_rpc.get_block_by_hash(
-        types.ETHWord.validate(
+        TypeAdapter(types.ETHWord).validate_python(
             "0xec1ec1738c4b62b6c519c3e24b3030927317a42b17907dc94d96f947df1d2267"
         ),
         True,
@@ -322,9 +324,19 @@ async def test_get_block_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
 
 
 @pytest.mark.asyncio
+async def test_get_logs(async_rpc: fasteth.AsyncEthereumJSONRPC):
+    logs_request = LogsFilter(address=test_address)
+    """Test get_logs serialization."""
+    models_log = await async_rpc.get_logs(
+        logs_request=logs_request
+    )
+    assert len(models_log) == 0, "Expected empty log list"
+
+
+@pytest.mark.asyncio
 async def test_get_block_by_number(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a block by number."""
-    block = await async_rpc.get_block_by_number(types.Uint256.validate(0), True)
+    block = await async_rpc.get_block_by_number(TypeAdapter(types.Uint256).validate_python(0), True)
     assert isinstance(block, models.BaseBlock)
 
 
@@ -350,15 +362,15 @@ async def test_shh_version(async_rpc: fasteth.AsyncEthereumJSONRPC):
 async def test_get_transaction_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a tx by hash."""
     tx = await async_rpc.get_transaction_by_hash(
-        types.ETHWord.validate(
+        TypeAdapter(types.ETHWord).validate_python(
             "0x270c9f96972fa465d2e2efa1c68ea6117e48b3e5d21ce0dcce2f72bda9f2cbdb"
         )
     )
     assert isinstance(tx, models.Transaction)
-    assert tx.from_address == types.ETHAddress.validate(
+    assert tx.from_address == TypeAdapter(types.ETHAddress).validate_python(
         "0xd2090025857b9c7b24387741f120538e928a3a59"
     )
-    assert tx.to == types.ETHAddress.validate(
+    assert tx.to ==  TypeAdapter(types.ETHAddress).validate_python(
         "0x4675c7e5baafbffbca748158becba61ef3b0a263"
     )
     # assert tx.blockHash == "0xec1ec1738c4b62b6c519c3e24b3030927317a42b17907dc94d96f947df1d2267"
@@ -370,15 +382,15 @@ async def test_get_transaction_by_hash(async_rpc: fasteth.AsyncEthereumJSONRPC):
 async def test_get_transaction_receipt(async_rpc: fasteth.AsyncEthereumJSONRPC):
     """Test getting a tx by hash."""
     tx = await async_rpc.get_transaction_receipt(
-        types.ETHWord.validate(
+        TypeAdapter(types.ETHWord).validate_python(
             "0x270c9f96972fa465d2e2efa1c68ea6117e48b3e5d21ce0dcce2f72bda9f2cbdb"
         )
     )
     assert isinstance(tx, models.TransactionReceipt)
-    assert tx.from_address == types.ETHAddress.validate(
+    assert tx.from_address == TypeAdapter(types.ETHAddress).validate_python(
         "0xd2090025857b9c7b24387741f120538e928a3a59"
     )
-    assert tx.to == types.ETHAddress.validate(
+    assert tx.to == TypeAdapter(types.ETHAddress).validate_python(
         "0x4675c7e5baafbffbca748158becba61ef3b0a263"
     )
     # assert tx.blockHash == "0xec1ec1738c4b62b6c519c3e24b3030927317a42b17907dc94d96f947df1d2267"

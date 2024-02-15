@@ -9,7 +9,7 @@ python = "^3.10"
 httpx = {extras = ["http2"], version = ">=0.16"}
 eth-typing = "^3.3.0"
 eth-utils = {version = "^2.1.0"}
-pydantic = "^1.8.1"
+pydantic = "^2.5.3"
 orjson = "^3.5.1"
 setuptools = "^65.6.3"
 pycryptodome = "^3.17" # need this since eth-utils wont install a backend for eth-hash
