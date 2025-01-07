@@ -264,7 +264,7 @@ class BaseBlock(AutoEthable):
     receiptsRoot: ETHWord
     miner: ETHAddress
     difficulty: Uint256
-    totalDifficulty: Uint256
+    totalDifficulty: Uint256 | None = None
     extraData: Bytes
     size: Uint256
     gasLimit: Uint256
