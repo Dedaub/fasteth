@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fasteth"
-version = "1.0.10"
+version = "1.0.13"
 description = "A lightweight, python native, async interface for the Ethereum JSON RPC."
 authors = ["Tony Valentine <tvalentine@dedaub.com>", "0xAlcibiades <info@dontemail.com>"]
 
@@ -8,8 +8,8 @@ authors = ["Tony Valentine <tvalentine@dedaub.com>", "0xAlcibiades <info@dontema
 python = "^3.10"
 httpx = {extras = ["http2"], version = ">=0.16"}
 eth-typing = "^3.3.0"
-eth-utils = {version = "^2.1.0"}
-pydantic = "^1.8.1"
+eth-utils = {version = "^4.1.1"}
+pydantic = "^1.10.7"
 orjson = "^3.5.1"
 setuptools = "^65.6.3"
 pycryptodome = "^3.17" # need this since eth-utils wont install a backend for eth-hash
