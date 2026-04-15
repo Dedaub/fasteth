@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Any, ClassVar, TypeVar, cast
 
 import orjson
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 from fasteth import exceptions as eth_exp
 from fasteth.types import (
@@ -83,18 +83,15 @@ def orjson_dumps(v, *, default):
 
 
 class AutoEthable(BaseModel):
-    class Config:
-        # https://docs.pydantic.dev/latest/usage/exporting_models/#custom-json-deserialisation
-        # NOTE: that orjson takes care of datetime encoding natively,
-        # making it faster than json.dumps but meaning you cannot
-        # always customise the encoding using Config.json_encoders.
-        #
-        # Idk if this is still the case with the ETHDatetime
+    def model_dump_json(self, **kwargs) -> str:
+        return orjson.dumps(
+            self.model_dump(**kwargs),
+            default=lambda x: f"0x{x.hex()}" if isinstance(x, bytes) else x
+        ).decode()
 
-        json_loads = orjson.loads
-        json_dumps = orjson_dumps
-        json_encoders = {bytes: lambda x: f"0x{x.hex()}"}
-
+    @classmethod
+    def model_validate_json(cls, json_data: str | bytes, **kwargs):
+        return super().model_validate(orjson.loads(json_data), **kwargs)
 
 # noinspection PyUnresolvedReferences
 class JSONRPCRequest(BaseModel):
@@ -131,12 +128,13 @@ class JSONRPCRequest(BaseModel):
     params: list = Field(default_factory=list)
     id: Uint256
 
-    class Config:
-        json_encoders = {
-            bytes: lambda x: f"0x{x.hex()}",
-            Uint256: hex,
-        }
-
+    def model_dump_json(self, **kwargs) -> str:
+        return orjson.dumps(
+            self.model_dump(**kwargs),
+            default=lambda x: f"0x{x.hex()}" if isinstance(x, bytes)
+                   else hex(x) if isinstance(x, int)
+                   else x
+        ).decode()
 
 class EthereumErrorData(BaseModel):
     # TODO: Break out handling logic here
@@ -181,7 +179,7 @@ class JSONRPCErrorData(BaseModel):
 
     code: Uint256
     message: str
-    data: dict | list | list[EthereumErrorData] | Bytes | None
+    data: dict | list | list[EthereumErrorData] | Bytes | None = None
     _exp: ClassVar = {
         -32700: eth_exp.ParseError,
         -32600: eth_exp.InvalidRequest,
@@ -293,11 +291,16 @@ class LogsFilter(BaseModel):
     topics: list[ETHWord] | None = None
     blockHash: ETHWord | None = None
 
+    @field_serializer("address")
+    def serialize_address(self, address: ETHAddress | list[ETHAddress]) -> str | list[str]:
+        if isinstance(address, list):
+            return [f"0x{a.hex()}" for a in address]
+        return f"0x{address.hex()}"
 
 class TransactionReceipt(AutoEthable):
     blockHash: ETHWord
     blockNumber: Uint256
-    contractAddress: ETHAddress | None
+    contractAddress: ETHAddress | None = None
     cumulativeGasUsed: Uint256
     effectiveGasPrice: Uint256
     from_address: ETHAddress = Field(..., alias="from")
@@ -305,7 +308,7 @@ class TransactionReceipt(AutoEthable):
     logs: list[Log]
     logsBloom: Bytes
     status: Uint256
-    to: ETHAddress | None
+    to: ETHAddress | None = None
     transactionHash: ETHWord
     transactionIndex: Uint256
     type: Uint256
