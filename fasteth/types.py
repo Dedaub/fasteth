@@ -95,6 +95,12 @@ class Uint256(int):
         if isinstance(val, (bytearray, memoryview, bytes)):
             return cls(int.from_bytes(val, byteorder="big", signed=False))
         elif isinstance(val, Decimal):
+            if val != val.to_integral_value():
+                raise TypeError(f"Decimal value {val} has a fractional part and cannot be coerced into an integer")
+            return cls(int(val))
+        elif isinstance(val, float):
+            if val != int(val):
+                raise TypeError(f"Float value {val} has a fractional part and cannot be coerced into an integer")
             return cls(int(val))
         elif isinstance(val, int):
             return cls(val)
