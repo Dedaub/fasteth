@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import GetCoreSchemaHandler
@@ -93,6 +94,8 @@ class Uint256(int):
     def validate(cls, val: Any) -> "Uint256":
         if isinstance(val, (bytearray, memoryview, bytes)):
             return cls(int.from_bytes(val, byteorder="big", signed=False))
+        elif isinstance(val, Decimal):
+            return cls(int(val))
         elif isinstance(val, int):
             return cls(val)
         elif isinstance(val, str):
