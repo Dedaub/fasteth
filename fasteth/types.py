@@ -88,8 +88,10 @@ class HexBytes(bytes):
 class Uint256(int):
     @classmethod
     def __get_pydantic_core_schema__(cls, source_type: Any, handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
-        return core_schema.no_info_plain_validator_function(cls.validate)
-
+        return core_schema.no_info_wrap_validator_function(
+            lambda v, next_: cls.validate(v),
+            schema=core_schema.int_schema(),
+        )
     @classmethod
     def validate(cls, val: Any) -> "Uint256":
         if isinstance(val, (bytearray, memoryview, bytes)):
