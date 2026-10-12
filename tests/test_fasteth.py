@@ -1,4 +1,5 @@
 import asyncio
+import os
 import re
 
 import pytest
@@ -53,9 +54,9 @@ def event_loop():
 @pytest.fixture()
 def async_rpc():
     """Returns an AsyncEthereumJSONRPC instance."""
-    # This fixture is reused for the entire module test run.
-    # Temporary Infura ID
-    # TODO(delete this infura project later)
+    rpc_url = os.environ.get("ETH_RPC_URL")
+    if rpc_url:
+        return fasteth.AsyncEthereumJSONRPC(rpc_uri=rpc_url)
     return fasteth.AsyncEthereumJSONRPC()
 
 

@@ -1,24 +1,31 @@
-[tool.poetry]
+[project]
 name = "fasteth"
 version = "1.0.13"
 description = "A lightweight, python native, async interface for the Ethereum JSON RPC."
-authors = ["Tony Valentine <tvalentine@dedaub.com>", "0xAlcibiades <info@dontemail.com>"]
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Tony Valentine", email = "tvalentine@dedaub.com" },
+    { name = "0xAlcibiades", email = "info@dontemail.com" },
+]
+requires-python = ">=3.10,<4"
+dependencies = [
+    "httpx[http2]>=0.16",
+    "eth-typing>=5.0.0,<6",
+    "eth-utils==5.3.1",
+    "pydantic==2.14.1",
+    "orjson>=3.5.1,<4",
+    "setuptools>=65.6.3,<66",
+    "pycryptodome>=3.17,<4", # need this since eth-utils wont install a backend for eth-hash
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-httpx = {extras = ["http2"], version = ">=0.16"}
-eth-typing = "^5.0.0"
-eth-utils = {version = "5.3.1"}
-pydantic = "2.12.5"
-orjson = "^3.5.1"
-setuptools = "^65.6.3"
-pycryptodome = "^3.17" # need this since eth-utils wont install a backend for eth-hash
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.0"
-pytest-asyncio = "^0.20.3"
-pytest-benchmark = "^4.0.0"
+[dependency-groups]
+dev = [
+    "pytest>=7.0,<8",
+    "pytest-asyncio>=0.20.3,<0.21",
+    "pytest-benchmark>=4.0.0,<5",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -7,7 +7,7 @@ This is currently a WIP project, but we'll work to improve it
 ## Installing
 
 ```sh
-poetry install
+uv sync
 ```
 
 ## Testing
@@ -16,5 +16,5 @@ poetry install
 npm install ganache --global
 ssh -L 8090:127.0.0.1:8090 node-portal -N &
 ganache --fork "http://127.0.0.1:8090/ethereum" &> ganache.log &
-pytest
+uv run pytest
 ```
