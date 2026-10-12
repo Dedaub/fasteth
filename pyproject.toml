@@ -1,6 +1,6 @@
 [project]
 name = "fasteth"
-version = "1.0.13"
+version = "1.0.14"
 description = "A lightweight, python native, async interface for the Ethereum JSON RPC."
 readme = "README.md"
 license = { file = "LICENSE" }
